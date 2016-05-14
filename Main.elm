@@ -2,9 +2,11 @@ module Main exposing (..)
 
 import Html.App
 import Html exposing (..)
-import Time exposing (Time, second)
+import Time exposing (Time, second, millisecond)
 import Svg exposing (..)
 import Svg.Attributes exposing (..)
+import AnimationFrame
+import Mouse
 
 
 -- MAIN
@@ -28,10 +30,10 @@ type alias Input =
   }
   
 type alias Position = 
-     {
-         x : Float,
-         y : Float
-     }
+    {
+        x : Float,
+        y : Float
+    }
      
 type alias Force =
     {
@@ -77,24 +79,41 @@ type alias World =
     
     
 -- Update
-gravitaionalConstant : number
-gravitaionalConstant = 500
+gravitaionalConstant : Float
+gravitaionalConstant = 0.5
 
 update : Msg -> World -> (World, Cmd Msg)
 update msg world = 
     case msg of
-    Tick newTime ->
-      (applyPhysics(world), Cmd.none)
-    
-applyPhysics : World -> World
-applyPhysics world =
-    { world | spheres = applyForces(world.spheres) 
+    Tick dt -> 
+     (applyPhysics dt world, Cmd.none)
+      
+    Click position ->
+      (addNewSphere position world, Cmd.none)
+      
+addNewSphere : Mouse.Position -> World -> World
+addNewSphere position world =
+     { world | spheres = List.append world.spheres [createSphere (toFloat position.x) (toFloat position.y)] }
+     
+createSphere : Float -> Float -> Sphere
+createSphere x y =
+    {
+        name = "A",
+        position = { x = x, y = y },
+        mass = { size = 10 } ,
+        diameter = 10,
+        velocity = { magnitudeX = 0, magnitudeY = 0 }
+    }
+      
+applyPhysics : Float -> World -> World
+applyPhysics dt world =
+    { world | spheres = applyForces dt world.spheres
                         |> updatePosistions 
                         |> detectAndMergeCollisions}
     
-applyForces : List(Sphere) -> List(Sphere)
-applyForces spheres = 
-    List.map (\e-> applyGravitationForAll e spheres) spheres
+applyForces : Float -> List(Sphere) -> List(Sphere)
+applyForces dt spheres = 
+    List.map (\e-> applyGravitationForAll dt e spheres) spheres
 
 updatePosistions : List(Sphere) -> List(Sphere)
 updatePosistions spheres = 
@@ -135,23 +154,32 @@ filterSpheres : Sphere -> List(Sphere) -> List(Sphere)
 filterSpheres sphere spheres =
     List.filter (\e1 -> e1 /=sphere) spheres
 
-applyGravitationForAll : Sphere -> List(Sphere) -> Sphere
-applyGravitationForAll sphereA spheres =
-    applyForcesToObject sphereA (List.map(\s -> calculateGravitation sphereA s) (List.filter(\s -> s /= sphereA) spheres))
+applyGravitationForAll : Float -> Sphere -> List(Sphere) -> Sphere
+applyGravitationForAll dt sphereA spheres =
+    applyForcesToObject sphereA (List.map(\s -> calculateGravitation dt sphereA s) (List.filter(\s -> s /= sphereA) spheres))
 
-calculateGravitation : Sphere -> Sphere -> Force
-calculateGravitation sphereA sphereB = 
-    let radius = (euclideanDistance sphereA.position sphereB.position)
-        force = calculateGravitationScalar sphereA.mass sphereB.mass radius
+calculateGravitation : Float -> Sphere -> Sphere -> Force
+calculateGravitation dt sphereA sphereB = 
+    let distance = (euclideanDistance sphereA.position sphereB.position)
+        force = calculateGravitationScalar sphereA.mass sphereB.mass distance
     in
+    if (distance < sphereA.diameter && distance < sphereB.diameter) then emptyForce
+    else
     { 
-        magnitudeX = force.size * ((sphereA.position.x - sphereB.position.x) / radius),
-        magnitudeY = force.size * ((sphereA.position.y - sphereB.position.y) / radius)
+        magnitudeX = dt * force.size * ((sphereA.position.x - sphereB.position.x) / distance),
+        magnitudeY = dt * force.size * ((sphereA.position.y - sphereB.position.y) / distance)
+    }
+    
+emptyForce : Force
+emptyForce = 
+    {
+        magnitudeX = 0,
+        magnitudeY = 0
     }
         
 calculateGravitationScalar : Mass -> Mass -> Float -> Scalar
-calculateGravitationScalar mass1 mass2 radius =
-    { size = ((mass1.size * mass2.size) / (radius ^ 2)) * -gravitaionalConstant}
+calculateGravitationScalar mass1 mass2 distance =
+    { size = ((mass1.size * mass2.size) / (distance ^ 2)) * -gravitaionalConstant}
     
 euclideanDistance : Position -> Position -> Float
 euclideanDistance positionA positionB =
@@ -184,60 +212,62 @@ length a b = b - a
 sum a b = a + b
 
 -- STATE
-
 defaultWorld : (World, Cmd Msg) 
 defaultWorld = 
  (
      {
         spheres = 
         [
-            {
-                name = "A",
-                position = { x = 100, y = 75 },
-                mass = { size = 3 } ,
-                diameter = 2,
-                velocity = { magnitudeX = 0, magnitudeY = 0 }
-            }
-            ,
-            {
-                name = "B",
-                position = { x = 50, y = 50 },
-                mass = { size = 3 } ,
-                diameter = 2,
-                velocity = { magnitudeX = 0, magnitudeY = 0 }
-            }
-            ,
-             {
-                name = "Unknown",
-                position = { x = -50, y = 50 },
-                mass = { size = 5 },
-                diameter = 10,
-                velocity = { magnitudeX = 0, magnitudeY = 0 }
-             }
-             ,
-            {
-                name = "Unknown",
-                position = { x = 45, y = 30 },
-                mass = { size = 5 },
-                diameter = 2,
-                velocity = { magnitudeX = 0, magnitudeY = 0 }
-            }
+            -- {
+            --     name = "A",
+            --     position = { x = 100, y = 75 },
+            --     mass = { size = 2 } ,
+            --     diameter = 2,
+            --     velocity = { magnitudeX = 0, magnitudeY = 0 }
+            -- }
+            -- ,
+            -- {
+            --     name = "B",
+            --     position = { x = 50, y = 50 },
+            --     mass = { size = 2 } ,
+            --     diameter = 2,
+            --     velocity = { magnitudeX = 0, magnitudeY = 0 }
+            -- }
+            -- ,
+            --  {
+            --     name = "Unknown",
+            --     position = { x = 140, y = 90 },
+            --     mass = { size = 2 },
+            --     diameter = 2,
+            --     velocity = { magnitudeX = 0, magnitudeY = 0 }
+            --  }
+            --  ,
+            -- {
+            --     name = "Unknown",
+            --     position = { x = 45, y = 30 },
+            --     mass = { size = 2 },
+            --     diameter = 2,
+            --     velocity = { magnitudeX = 0, magnitudeY = 0 }
+            -- }
         ]
     }
  ,
  Cmd.none
  )
  
-type Msg = Tick Time
+type Msg = Tick Time | Click Mouse.Position
  
 subscriptions : World -> Sub Msg
 subscriptions world =
-  Time.every second Tick
+  Sub.batch [
+      AnimationFrame.diffs Tick,
+      Mouse.clicks Click  
+  ]
 
 -- VIEW
 view : World -> Html Msg
 view model =
-    Svg.svg [ viewBox "0 0 200 200", width "800px" ] (createCircles model)
+    Svg.svg [ width "2000px", height "1200px" ] (createCircles model)
       
       
 createCircles : World -> List (Svg.Svg msg)
