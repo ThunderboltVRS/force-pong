@@ -123,6 +123,7 @@ applyPhysics dt world =
                         |> limitSpheres
                         |> incrementLifetime
                         }
+                        
 limitSpheres : List(Sphere) -> List(Sphere)
 limitSpheres spheres = 
     spheres
