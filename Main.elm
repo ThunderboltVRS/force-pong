@@ -7,6 +7,7 @@ import Svg exposing (..)
 import Svg.Attributes exposing (..)
 import AnimationFrame
 import Mouse
+import Window exposing (..)
 
 
 -- MAIN
@@ -69,7 +70,8 @@ type alias Sphere =
         position : Position,
         mass : Mass,
         diameter: Float,
-        velocity : Velocity
+        velocity : Velocity,
+        aliveFrames : Float
     }
     
 type alias World =
@@ -82,6 +84,9 @@ type alias World =
 gravitaionalConstant : Float
 gravitaionalConstant = 0.5
 
+sphereLimit : Float
+sphereLimit = 5
+
 update : Msg -> World -> (World, Cmd Msg)
 update msg world = 
     case msg of
@@ -90,6 +95,10 @@ update msg world =
       
     Click position ->
       (addNewSphere position world, Cmd.none)
+      
+    WindowSize reSize ->
+        (world, Cmd.none)
+            
       
 addNewSphere : Mouse.Position -> World -> World
 addNewSphere position world =
@@ -102,14 +111,25 @@ createSphere x y =
         position = { x = x, y = y },
         mass = { size = 10 } ,
         diameter = 10,
-        velocity = { magnitudeX = 0, magnitudeY = 0 }
+        velocity = { magnitudeX = 0, magnitudeY = 0 },
+        aliveFrames = 0
     }
       
 applyPhysics : Float -> World -> World
 applyPhysics dt world =
     { world | spheres = applyForces dt world.spheres
                         |> updatePosistions 
-                        |> detectAndMergeCollisions}
+                        |> detectAndMergeCollisions
+                        |> limitSpheres
+                        |> incrementLifetime
+                        }
+limitSpheres : List(Sphere) -> List(Sphere)
+limitSpheres spheres = 
+    spheres
+                        
+incrementLifetime : List(Sphere) -> List(Sphere)
+incrementLifetime spheres = 
+    List.map (\e-> { e | aliveFrames = e.aliveFrames + 1}) spheres
     
 applyForces : Float -> List(Sphere) -> List(Sphere)
 applyForces dt spheres = 
@@ -121,7 +141,15 @@ updatePosistions spheres =
     
 detectAndMergeCollisions : List(Sphere) -> List(Sphere)
 detectAndMergeCollisions spheres = 
-    spheres
+    -- let nonCollides = List.filter (\s -> calculateGravitation dt sphereA s) collided spheres
+    -- in
+        spheres
+    
+collided : Sphere -> Sphere -> Bool
+collided sphereA sphereB =
+    let distance = euclideanDistance sphereA.position sphereB.position
+    in 
+        distance < sphereA.diameter && distance < sphereB.diameter
     
 mergeSphere : Sphere -> Sphere -> Sphere
 mergeSphere sphereA sphereB = 
@@ -176,7 +204,7 @@ emptyForce =
         magnitudeX = 0,
         magnitudeY = 0
     }
-        
+
 calculateGravitationScalar : Mass -> Mass -> Float -> Scalar
 calculateGravitationScalar mass1 mass2 distance =
     { size = ((mass1.size * mass2.size) / (distance ^ 2)) * -gravitaionalConstant}
@@ -189,6 +217,7 @@ applyForcesToObject : Sphere -> List(Force) -> Sphere
 applyForcesToObject sphere forces = 
     { sphere | velocity = updateVelocityForForces sphere.velocity sphere.mass.size forces }
 
+-- F= ma
 updateVelocityForForces : Velocity -> Float -> List(Force) -> Velocity
 updateVelocityForForces velocity mass forces = 
     { velocity | magnitudeX = velocity.magnitudeX + (sumMagnitudeX(forces) / mass), magnitudeY = velocity.magnitudeY + (sumMagnitudeY(forces) / mass)}
@@ -200,10 +229,6 @@ sumMagnitudeX forces =
 sumMagnitudeY : List(Force) -> Float
 sumMagnitudeY forces =
     List.foldl sum 0 (List.map (\f -> f.magnitudeY) forces)
-    
-apportionScalarInAxis : Scalar -> Float-> Float -> Float
-apportionScalarInAxis force lengthX lengthY =
-    force.size * (lengthX / lengthY) * 100
 
 square n = n ^ 2
 
@@ -225,49 +250,32 @@ defaultWorld =
             --     diameter = 2,
             --     velocity = { magnitudeX = 0, magnitudeY = 0 }
             -- }
-            -- ,
-            -- {
-            --     name = "B",
-            --     position = { x = 50, y = 50 },
-            --     mass = { size = 2 } ,
-            --     diameter = 2,
-            --     velocity = { magnitudeX = 0, magnitudeY = 0 }
-            -- }
-            -- ,
-            --  {
-            --     name = "Unknown",
-            --     position = { x = 140, y = 90 },
-            --     mass = { size = 2 },
-            --     diameter = 2,
-            --     velocity = { magnitudeX = 0, magnitudeY = 0 }
-            --  }
-            --  ,
-            -- {
-            --     name = "Unknown",
-            --     position = { x = 45, y = 30 },
-            --     mass = { size = 2 },
-            --     diameter = 2,
-            --     velocity = { magnitudeX = 0, magnitudeY = 0 }
-            -- }
         ]
     }
  ,
  Cmd.none
  )
  
-type Msg = Tick Time | Click Mouse.Position
+type Msg = Tick Time | Click Mouse.Position | WindowSize Window.Size
  
 subscriptions : World -> Sub Msg
 subscriptions world =
   Sub.batch [
       AnimationFrame.diffs Tick,
-      Mouse.clicks Click  
+      Mouse.clicks Click,
+      Window.resizes WindowSize
   ]
 
 -- VIEW
 view : World -> Html Msg
 view model =
-    Svg.svg [ width "2000px", height "1200px" ] (createCircles model)
+    let 
+        w = "1400px"
+        h = "900px"
+        -- w = (toString Window.width) ++ "px"
+        -- h = (toString Window.height) ++ "px"
+    in
+    Svg.svg [ Svg.Attributes.width w, Svg.Attributes.height h ] (List.append [sphereGradientColour] (createCircles model))
       
       
 createCircles : World -> List (Svg.Svg msg)
@@ -276,4 +284,16 @@ createCircles world =
     
 createCircle : Sphere -> Svg.Svg msg
 createCircle sphere = 
-    circle [ cx (toString sphere.position.x), cy (toString sphere.position.y), r (toString sphere.diameter), fill "#0B79CE" ] []
+    circle [ cx (toString sphere.position.x), cy (toString sphere.position.y), r (toString sphere.diameter), fill "url(#grad1)" ] [sphereGradientColour]
+    
+sphereGradientColour : Svg.Svg msg
+sphereGradientColour  =
+    radialGradient [id "grad1", cx "50%", cy "50%", r "50%", fx "50%", fy "50%" ] [innerSphereColour, outerSphereColour]
+
+innerSphereColour : Svg.Svg msg
+innerSphereColour =
+    Svg.stop [offset "0%", stopColor "#0B79CE", stopOpacity "0.3" ] []
+    
+outerSphereColour : Svg.Svg msg
+outerSphereColour =
+    Svg.stop [offset "100%", stopColor "#0B79CE", stopOpacity "1" ] []
