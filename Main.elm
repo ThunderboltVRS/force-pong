@@ -2,6 +2,8 @@ module Main exposing (..)
 
 import Html.App
 import Html exposing (..)
+import Html.Attributes exposing (..)
+import Html.Events exposing (onInput)
 import Time exposing (Time, second, millisecond)
 import Svg exposing (..)
 import Svg.Attributes exposing (..)
@@ -76,16 +78,17 @@ type alias Sphere =
     
 type alias World =
     {
-        spheres : List (Sphere)
+        spheres : List (Sphere),
+        gravitationalConstant : Constant,
+        sphereLimit : Constant
     }
     
+type alias Constant = 
+    {
+        size : Float
+    }
     
 -- Update
-gravitaionalConstant : Float
-gravitaionalConstant = 0.5
-
-sphereLimit : Float
-sphereLimit = 5
 
 update : Msg -> World -> (World, Cmd Msg)
 update msg world = 
@@ -94,7 +97,7 @@ update msg world =
      (applyPhysics dt world, Cmd.none)
       
     Click position ->
-      (addNewSphere position world, Cmd.none)
+      (addNewSphere position world |> limitSpheres, Cmd.none)
       
     WindowSize reSize ->
         (world, Cmd.none)
@@ -117,24 +120,26 @@ createSphere x y =
       
 applyPhysics : Float -> World -> World
 applyPhysics dt world =
-    { world | spheres = applyForces dt world.spheres
+    { world | spheres = applyForces world.gravitationalConstant dt world.spheres
                         |> updatePosistions 
                         |> detectAndMergeCollisions
-                        |> limitSpheres
                         |> incrementLifetime
                         }
                         
-limitSpheres : List(Sphere) -> List(Sphere)
-limitSpheres spheres = 
-    spheres
                         
+limitSpheres : World -> World
+limitSpheres world = 
+    { world | spheres = List.sortBy .aliveFrames world.spheres
+                |> List.take (round world.sphereLimit.size)
+    }
+        
 incrementLifetime : List(Sphere) -> List(Sphere)
 incrementLifetime spheres = 
     List.map (\e-> { e | aliveFrames = e.aliveFrames + 1}) spheres
     
-applyForces : Float -> List(Sphere) -> List(Sphere)
-applyForces dt spheres = 
-    List.map (\e-> applyGravitationForAll dt e spheres) spheres
+applyForces : Constant -> Float -> List(Sphere) -> List(Sphere)
+applyForces gravConst dt spheres = 
+    List.map (\e-> applyGravitationForAll gravConst dt e spheres) spheres
 
 updatePosistions : List(Sphere) -> List(Sphere)
 updatePosistions spheres = 
@@ -183,14 +188,14 @@ filterSpheres : Sphere -> List(Sphere) -> List(Sphere)
 filterSpheres sphere spheres =
     List.filter (\e1 -> e1 /=sphere) spheres
 
-applyGravitationForAll : Float -> Sphere -> List(Sphere) -> Sphere
-applyGravitationForAll dt sphereA spheres =
-    applyForcesToObject sphereA (List.map(\s -> calculateGravitation dt sphereA s) (List.filter(\s -> s /= sphereA) spheres))
+applyGravitationForAll : Constant -> Float -> Sphere -> List(Sphere) -> Sphere
+applyGravitationForAll gravConst dt sphereA spheres =
+    applyForcesToObject sphereA (List.map(\s -> calculateGravitation gravConst dt sphereA s) (List.filter(\s -> s /= sphereA) spheres))
 
-calculateGravitation : Float -> Sphere -> Sphere -> Force
-calculateGravitation dt sphereA sphereB = 
+calculateGravitation : Constant -> Float -> Sphere -> Sphere -> Force
+calculateGravitation gravConst dt sphereA sphereB = 
     let distance = (euclideanDistance sphereA.position sphereB.position)
-        force = calculateGravitationScalar sphereA.mass sphereB.mass distance
+        force = calculateGravitationScalar gravConst sphereA.mass sphereB.mass distance
     in
     if (distance < sphereA.diameter && distance < sphereB.diameter) then emptyForce
     else
@@ -206,9 +211,9 @@ emptyForce =
         magnitudeY = 0
     }
 
-calculateGravitationScalar : Mass -> Mass -> Float -> Scalar
-calculateGravitationScalar mass1 mass2 distance =
-    { size = ((mass1.size * mass2.size) / (distance ^ 2)) * -gravitaionalConstant}
+calculateGravitationScalar : Constant -> Mass -> Mass -> Float -> Scalar
+calculateGravitationScalar gravConst mass1 mass2 distance =
+    { size = ((mass1.size * mass2.size) / (distance ^ 2)) * (-gravConst.size)}
     
 euclideanDistance : Position -> Position -> Float
 euclideanDistance positionA positionB =
@@ -252,6 +257,9 @@ defaultWorld =
             --     velocity = { magnitudeX = 0, magnitudeY = 0 }
             -- }
         ]
+        ,
+        gravitationalConstant = { size = 0.4},
+        sphereLimit = { size = 40}
     }
  ,
  Cmd.none
@@ -276,7 +284,7 @@ view model =
         -- w = (toString Window.width) ++ "px"
         -- h = (toString Window.height) ++ "px"
     in
-    Svg.svg [ Svg.Attributes.width w, Svg.Attributes.height h ] (List.append [sphereGradientColour] (createCircles model))
+    Svg.svg [ Svg.Attributes.width w, Svg.Attributes.height h, Svg.Attributes.style "background-color: lightgray" ] (List.append [sphereGradientColour] (createCircles model))
       
       
 createCircles : World -> List (Svg.Svg msg)
@@ -289,7 +297,7 @@ createCircle sphere =
     
 sphereGradientColour : Svg.Svg msg
 sphereGradientColour  =
-    radialGradient [id "grad1", cx "50%", cy "50%", r "50%", fx "50%", fy "50%" ] [innerSphereColour, outerSphereColour]
+    radialGradient [Svg.Attributes.id "grad1", cx "50%", cy "50%", r "50%", fx "50%", fy "50%" ] [innerSphereColour, outerSphereColour]
 
 innerSphereColour : Svg.Svg msg
 innerSphereColour =
