@@ -8564,6 +8564,31 @@ var _user$project$Main$length = F2(
 var _user$project$Main$square = function (n) {
 	return Math.pow(n, 2);
 };
+var _user$project$Main$removeMergedSpheres = function (spheres) {
+	return A2(
+		_elm_lang$core$List$filter,
+		function (e) {
+			return _elm_lang$core$Native_Utils.eq(e.merged, false);
+		},
+		spheres);
+};
+var _user$project$Main$calculateDiamter = function (mass) {
+	var scale = 5;
+	return A2(
+		F2(
+			function (x, y) {
+				return x * y;
+			}),
+		scale,
+		_elm_lang$core$Basics$sqrt(mass / _elm_lang$core$Basics$pi));
+};
+var _user$project$Main$updateDiameter = function (sphere) {
+	return _elm_lang$core$Native_Utils.update(
+		sphere,
+		{
+			diameter: _user$project$Main$calculateDiamter(sphere.mass.size)
+		});
+};
 var _user$project$Main$sumMagnitudeY = function (forces) {
 	return A3(
 		_elm_lang$core$List$foldl,
@@ -8609,6 +8634,17 @@ var _user$project$Main$euclideanDistance = F2(
 	function (positionA, positionB) {
 		return _elm_lang$core$Basics$sqrt(
 			_user$project$Main$square(positionB.x - positionA.x) + _user$project$Main$square(positionB.y - positionA.y));
+	});
+var _user$project$Main$collidedSpheres = F2(
+	function (sphere, otherSpheres) {
+		return A2(
+			_elm_lang$core$List$filter,
+			function (e) {
+				return _elm_lang$core$Native_Utils.cmp(
+					A2(_user$project$Main$euclideanDistance, sphere.position, e.position),
+					sphere.diameter + e.diameter) < 0;
+			},
+			otherSpheres);
 	});
 var _user$project$Main$calculateGravitationScalar = F4(
 	function (gravConst, mass1, mass2, distance) {
@@ -8678,15 +8714,36 @@ var _user$project$Main$sumMass = F2(
 			massA,
 			{size: massA.size + massB.size});
 	});
+var _user$project$Main$markAsMerged = function (sphere) {
+	return _elm_lang$core$Native_Utils.update(
+		sphere,
+		{merged: true});
+};
 var _user$project$Main$mergeSphere = F2(
 	function (sphereA, sphereB) {
-		return _elm_lang$core$Native_Utils.update(
-			sphereA,
-			{
-				mass: A2(_user$project$Main$sumMass, sphereA.mass, sphereB.mass),
-				velocity: A2(_user$project$Main$sumVelocity, sphereA.velocity, sphereB.velocity),
-				position: A2(_user$project$Main$mergePosition, sphereA.position, sphereB.position)
-			});
+		return _user$project$Main$updateDiameter(
+			_elm_lang$core$Native_Utils.update(
+				sphereA,
+				{
+					mass: A2(_user$project$Main$sumMass, sphereA.mass, sphereB.mass),
+					velocity: A2(_user$project$Main$sumVelocity, sphereA.velocity, sphereB.velocity),
+					position: A2(_user$project$Main$mergePosition, sphereA.position, sphereB.position)
+				}));
+	});
+var _user$project$Main$mergeSpheres = F2(
+	function (testSphere, otherSpheres) {
+		var spheresCollided = A2(_user$project$Main$collidedSpheres, testSphere, otherSpheres);
+		return _elm_lang$core$List$isEmpty(spheresCollided) ? testSphere : ((A2(
+			_elm_lang$core$List$any,
+			function (f) {
+				return _elm_lang$core$Native_Utils.cmp(f.mass.size, testSphere.mass.size) > 0;
+			},
+			spheresCollided) || A2(
+			_elm_lang$core$List$any,
+			function (f) {
+				return _elm_lang$core$Native_Utils.cmp(f.aliveFrames, testSphere.aliveFrames) > 0;
+			},
+			spheresCollided)) ? _user$project$Main$markAsMerged(testSphere) : A3(_elm_lang$core$List$foldl, _user$project$Main$mergeSphere, testSphere, spheresCollided));
 	});
 var _user$project$Main$collided = F2(
 	function (sphereA, sphereB) {
@@ -8694,7 +8751,21 @@ var _user$project$Main$collided = F2(
 		return (_elm_lang$core$Native_Utils.cmp(distance, sphereA.diameter) < 0) && (_elm_lang$core$Native_Utils.cmp(distance, sphereB.diameter) < 0);
 	});
 var _user$project$Main$detectAndMergeCollisions = function (spheres) {
-	return spheres;
+	return _user$project$Main$removeMergedSpheres(
+		A2(
+			_elm_lang$core$List$map,
+			function (e) {
+				return A2(
+					_user$project$Main$mergeSpheres,
+					e,
+					A2(
+						_elm_lang$core$List$filter,
+						function (e1) {
+							return !_elm_lang$core$Native_Utils.eq(e1, e);
+						},
+						spheres));
+			},
+			spheres));
 };
 var _user$project$Main$updatePosistions = function (spheres) {
 	return A2(
@@ -8751,13 +8822,15 @@ var _user$project$Main$applyPhysics = F2(
 	});
 var _user$project$Main$createSphere = F2(
 	function (x, y) {
+		var initialMassSize = 10;
 		return {
-			name: 'A',
+			id: 'A',
 			position: {x: x, y: y},
-			mass: {size: 10},
-			diameter: 10,
+			mass: {size: initialMassSize},
+			diameter: _user$project$Main$calculateDiamter(initialMassSize),
 			velocity: {magnitudeX: 0, magnitudeY: 0},
-			aliveFrames: 0
+			aliveFrames: 0,
+			merged: false
 		};
 	});
 var _user$project$Main$addNewSphere = F2(
@@ -8824,9 +8897,9 @@ var _user$project$Main$Velocity = F2(
 	function (a, b) {
 		return {magnitudeX: a, magnitudeY: b};
 	});
-var _user$project$Main$Sphere = F6(
-	function (a, b, c, d, e, f) {
-		return {name: a, position: b, mass: c, diameter: d, velocity: e, aliveFrames: f};
+var _user$project$Main$Sphere = F7(
+	function (a, b, c, d, e, f, g) {
+		return {id: a, position: b, mass: c, diameter: d, velocity: e, aliveFrames: f, merged: g};
 	});
 var _user$project$Main$World = F3(
 	function (a, b, c) {
