@@ -68,12 +68,13 @@ type alias Velocity =
 
 type alias Sphere = 
     { 
-        name : String,
+        id : String,
         position : Position,
         mass : Mass,
         diameter: Float,
         velocity : Velocity,
-        aliveFrames : Float
+        aliveFrames : Float,
+        merged : Bool
     }
     
 type alias World =
@@ -109,13 +110,16 @@ addNewSphere position world =
      
 createSphere : Float -> Float -> Sphere
 createSphere x y =
+    let initialMassSize = 10
+    in
     {
-        name = "A",
+        id = "A",
         position = { x = x, y = y },
-        mass = { size = 10 } ,
-        diameter = 10,
+        mass = { size = initialMassSize } ,
+        diameter = calculateDiamter initialMassSize,
         velocity = { magnitudeX = 0, magnitudeY = 0 },
-        aliveFrames = 0
+        aliveFrames = 0,
+        merged = False
     }
       
 applyPhysics : Float -> World -> World
@@ -147,10 +151,9 @@ updatePosistions spheres =
     
 detectAndMergeCollisions : List(Sphere) -> List(Sphere)
 detectAndMergeCollisions spheres = 
-    -- let nonCollides = List.filter (\s -> calculateGravitation dt sphereA s) collided spheres
-    -- in
-        spheres
-    
+    List.map (\e-> mergeSpheres e (List.filter (\e1 -> e1 /= e) spheres)) spheres
+    |> removeMergedSpheres
+        
 collided : Sphere -> Sphere -> Bool
 collided sphereA sphereB =
     let distance = euclideanDistance sphereA.position sphereB.position
@@ -160,6 +163,11 @@ collided sphereA sphereB =
 mergeSphere : Sphere -> Sphere -> Sphere
 mergeSphere sphereA sphereB = 
     { sphereA | mass = sumMass sphereA.mass sphereB.mass, velocity = sumVelocity sphereA.velocity sphereB.velocity, position =  mergePosition sphereA.position sphereB.position}
+    |> updateDiameter
+    
+markAsMerged : Sphere -> Sphere
+markAsMerged sphere = 
+    { sphere | merged = True}
 
 sumMass : Mass -> Mass -> Mass
 sumMass massA massB = 
@@ -235,6 +243,38 @@ sumMagnitudeX forces =
 sumMagnitudeY : List(Force) -> Float
 sumMagnitudeY forces =
     List.foldl sum 0 (List.map (\f -> f.magnitudeY) forces)
+    
+mergeSpheres : Sphere -> List(Sphere) -> Sphere
+mergeSpheres testSphere otherSpheres =
+    let spheresCollided = collidedSpheres testSphere otherSpheres
+    in 
+        if List.isEmpty spheresCollided then
+            testSphere 
+        else
+            if (List.any (\f -> f.mass.size > testSphere.mass.size) spheresCollided) || (List.any (\f -> f.aliveFrames > testSphere.aliveFrames) spheresCollided) then
+                markAsMerged testSphere
+            else
+                List.foldl mergeSphere testSphere spheresCollided
+                
+updateDiameter : Sphere -> Sphere
+updateDiameter sphere =
+    { sphere | diameter = calculateDiamter sphere.mass.size }
+
+calculateDiamter : Float -> Float
+calculateDiamter mass =
+    let scale = 5
+    in
+        mass / pi
+        |> sqrt
+        |> (*) scale     
+            
+removeMergedSpheres : List(Sphere) -> List(Sphere)
+removeMergedSpheres spheres =
+    List.filter (\e -> e.merged == False) spheres
+    
+collidedSpheres : Sphere -> List(Sphere) -> List(Sphere) 
+collidedSpheres sphere otherSpheres =
+    List.filter (\e-> euclideanDistance sphere.position e.position < (sphere.diameter + e.diameter)) otherSpheres
 
 square n = n ^ 2
 
