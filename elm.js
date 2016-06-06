@@ -2024,10 +2024,11 @@ function toEffect(isCmd, home, taggers, value)
 {
 	function applyTaggers(x)
 	{
-		while (taggers)
+		var temp = taggers;
+		while (temp)
 		{
-			x = taggers.tagger(x);
-			taggers = taggers.rest;
+			x = temp.tagger(x);
+			temp = temp.rest;
 		}
 		return x;
 	}
@@ -2522,39 +2523,6 @@ var _elm_lang$core$Platform_Sub$none = _elm_lang$core$Platform_Sub$batch(
 		[]));
 var _elm_lang$core$Platform_Sub$map = _elm_lang$core$Native_Platform.map;
 var _elm_lang$core$Platform_Sub$Sub = {ctor: 'Sub'};
-
-var _elm_lang$animation_frame$Native_AnimationFrame = function()
-{
-
-var hasStartTime =
-	window.performance &&
-	window.performance.timing &&
-	window.performance.timing.navigationStart;
-
-var navStart = hasStartTime
-	? window.performance.timing.navigationStart
-	: Date.now();
-
-var rAF = _elm_lang$core$Native_Scheduler.nativeBinding(function(callback)
-{
-	var id = requestAnimationFrame(function(time) {
-		var timeNow = time
-			? (time > navStart ? time : time + navStart)
-			: Date.now();
-
-		callback(_elm_lang$core$Native_Scheduler.succeed(timeNow));
-	});
-
-	return function() {
-		cancelAnimationFrame(id);
-	};
-});
-
-return {
-	rAF: rAF
-};
-
-}();
 
 var _elm_lang$core$Task$onError = _elm_lang$core$Native_Scheduler.onError;
 var _elm_lang$core$Task$andThen = _elm_lang$core$Native_Scheduler.andThen;
@@ -4314,150 +4282,6 @@ var _elm_lang$core$Process$kill = _elm_lang$core$Native_Scheduler.kill;
 var _elm_lang$core$Process$sleep = _elm_lang$core$Native_Scheduler.sleep;
 var _elm_lang$core$Process$spawn = _elm_lang$core$Native_Scheduler.spawn;
 
-var _elm_lang$animation_frame$AnimationFrame$rAF = _elm_lang$animation_frame$Native_AnimationFrame.rAF;
-var _elm_lang$animation_frame$AnimationFrame$subscription = _elm_lang$core$Native_Platform.leaf('AnimationFrame');
-var _elm_lang$animation_frame$AnimationFrame$State = F3(
-	function (a, b, c) {
-		return {subs: a, request: b, oldTime: c};
-	});
-var _elm_lang$animation_frame$AnimationFrame$init = _elm_lang$core$Task$succeed(
-	A3(
-		_elm_lang$animation_frame$AnimationFrame$State,
-		_elm_lang$core$Native_List.fromArray(
-			[]),
-		_elm_lang$core$Maybe$Nothing,
-		0));
-var _elm_lang$animation_frame$AnimationFrame$onEffects = F3(
-	function (router, subs, _p0) {
-		var _p1 = _p0;
-		var _p5 = _p1.request;
-		var _p4 = _p1.oldTime;
-		var _p2 = {ctor: '_Tuple2', _0: _p5, _1: subs};
-		if (_p2._0.ctor === 'Nothing') {
-			if (_p2._1.ctor === '[]') {
-				return _elm_lang$core$Task$succeed(
-					A3(
-						_elm_lang$animation_frame$AnimationFrame$State,
-						_elm_lang$core$Native_List.fromArray(
-							[]),
-						_elm_lang$core$Maybe$Nothing,
-						_p4));
-			} else {
-				return A2(
-					_elm_lang$core$Task$andThen,
-					_elm_lang$core$Process$spawn(
-						A2(
-							_elm_lang$core$Task$andThen,
-							_elm_lang$animation_frame$AnimationFrame$rAF,
-							_elm_lang$core$Platform$sendToSelf(router))),
-					function (pid) {
-						return A2(
-							_elm_lang$core$Task$andThen,
-							_elm_lang$core$Time$now,
-							function (time) {
-								return _elm_lang$core$Task$succeed(
-									A3(
-										_elm_lang$animation_frame$AnimationFrame$State,
-										subs,
-										_elm_lang$core$Maybe$Just(pid),
-										time));
-							});
-					});
-			}
-		} else {
-			if (_p2._1.ctor === '[]') {
-				return A2(
-					_elm_lang$core$Task$andThen,
-					_elm_lang$core$Process$kill(_p2._0._0),
-					function (_p3) {
-						return _elm_lang$core$Task$succeed(
-							A3(
-								_elm_lang$animation_frame$AnimationFrame$State,
-								_elm_lang$core$Native_List.fromArray(
-									[]),
-								_elm_lang$core$Maybe$Nothing,
-								_p4));
-					});
-			} else {
-				return _elm_lang$core$Task$succeed(
-					A3(_elm_lang$animation_frame$AnimationFrame$State, subs, _p5, _p4));
-			}
-		}
-	});
-var _elm_lang$animation_frame$AnimationFrame$onSelfMsg = F3(
-	function (router, newTime, _p6) {
-		var _p7 = _p6;
-		var _p10 = _p7.subs;
-		var diff = newTime - _p7.oldTime;
-		var send = function (sub) {
-			var _p8 = sub;
-			if (_p8.ctor === 'Time') {
-				return A2(
-					_elm_lang$core$Platform$sendToApp,
-					router,
-					_p8._0(newTime));
-			} else {
-				return A2(
-					_elm_lang$core$Platform$sendToApp,
-					router,
-					_p8._0(diff));
-			}
-		};
-		return A2(
-			_elm_lang$core$Task$andThen,
-			_elm_lang$core$Process$spawn(
-				A2(
-					_elm_lang$core$Task$andThen,
-					_elm_lang$animation_frame$AnimationFrame$rAF,
-					_elm_lang$core$Platform$sendToSelf(router))),
-			function (pid) {
-				return A2(
-					_elm_lang$core$Task$andThen,
-					_elm_lang$core$Task$sequence(
-						A2(_elm_lang$core$List$map, send, _p10)),
-					function (_p9) {
-						return _elm_lang$core$Task$succeed(
-							A3(
-								_elm_lang$animation_frame$AnimationFrame$State,
-								_p10,
-								_elm_lang$core$Maybe$Just(pid),
-								newTime));
-					});
-			});
-	});
-var _elm_lang$animation_frame$AnimationFrame$Diff = function (a) {
-	return {ctor: 'Diff', _0: a};
-};
-var _elm_lang$animation_frame$AnimationFrame$diffs = function (tagger) {
-	return _elm_lang$animation_frame$AnimationFrame$subscription(
-		_elm_lang$animation_frame$AnimationFrame$Diff(tagger));
-};
-var _elm_lang$animation_frame$AnimationFrame$Time = function (a) {
-	return {ctor: 'Time', _0: a};
-};
-var _elm_lang$animation_frame$AnimationFrame$times = function (tagger) {
-	return _elm_lang$animation_frame$AnimationFrame$subscription(
-		_elm_lang$animation_frame$AnimationFrame$Time(tagger));
-};
-var _elm_lang$animation_frame$AnimationFrame$subMap = F2(
-	function (func, sub) {
-		var _p11 = sub;
-		if (_p11.ctor === 'Time') {
-			return _elm_lang$animation_frame$AnimationFrame$Time(
-				function (_p12) {
-					return func(
-						_p11._0(_p12));
-				});
-		} else {
-			return _elm_lang$animation_frame$AnimationFrame$Diff(
-				function (_p13) {
-					return func(
-						_p11._0(_p13));
-				});
-		}
-	});
-_elm_lang$core$Native_Platform.effectManagers['AnimationFrame'] = {pkg: 'elm-lang/animation-frame', init: _elm_lang$animation_frame$AnimationFrame$init, onEffects: _elm_lang$animation_frame$AnimationFrame$onEffects, onSelfMsg: _elm_lang$animation_frame$AnimationFrame$onSelfMsg, tag: 'sub', subMap: _elm_lang$animation_frame$AnimationFrame$subMap};
-
 //import Native.List //
 
 var _elm_lang$core$Native_Array = function() {
@@ -5712,7 +5536,10 @@ function badOneOf(problems)
 	return { tag: 'oneOf', problems: problems };
 }
 
-var bad = { tag: 'fail' };
+function bad(msg)
+{
+	return { tag: 'fail', msg: msg };
+}
 
 function badToString(problem)
 {
@@ -5748,7 +5575,8 @@ function badToString(problem)
 
 			case 'fail':
 				return 'I ran into a `fail` decoder'
-					+ (context === '_' ? '' : ' at ' + context);
+					+ (context === '_' ? '' : ' at ' + context)
+					+ ': ' + problem.msg;
 		}
 	}
 }
@@ -5795,14 +5623,19 @@ function runHelp(decoder, value)
 				: badPrimitive('a Bool', value);
 
 		case 'int':
-			var isNotInt =
-				typeof value !== 'number'
-				|| !(-2147483647 < value && value < 2147483647 && (value | 0) === value)
-				|| !(isFinite(value) && !(value % 1));
+			if (typeof value !== 'number') {
+				return badPrimitive('an Int', value);
+			}
 
-			return isNotInt
-				? badPrimitive('an Int', value)
-				: ok(value);
+			if (-2147483647 < value && value < 2147483647 && (value | 0) === value) {
+				return ok(value);
+			}
+
+			if (isFinite(value) && !(value % 1)) {
+				return ok(value);
+			}
+
+			return badPrimitive('an Int', value);
 
 		case 'float':
 			return (typeof value === 'number')
@@ -5882,7 +5715,7 @@ function runHelp(decoder, value)
 		case 'key-value':
 			if (typeof value !== 'object' || value === null || value instanceof Array)
 			{
-				return err('an object', value);
+				return badPrimitive('an object', value);
 			}
 
 			var keyValuePairs = _elm_lang$core$Native_List.Nil;
@@ -5971,7 +5804,7 @@ function runHelp(decoder, value)
 			return badOneOf(errors);
 
 		case 'fail':
-			return bad;
+			return bad(decoder.msg);
 
 		case 'succeed':
 			return ok(decoder.msg);
@@ -6546,11 +6379,24 @@ function render(vNode, eventNode)
 			return render(vNode.node, eventNode);
 
 		case 'tagger':
+			var subNode = vNode.node;
+			var tagger = vNode.tagger;
+		
+			while (subNode.type === 'tagger')
+			{
+				typeof tagger !== 'object'
+					? tagger = [tagger, subNode.tagger]
+					: tagger.push(subNode.tagger);
+
+				subNode = subNode.node;
+			}
+            
 			var subEventRoot = {
-				tagger: vNode.tagger,
+				tagger: tagger,
 				parent: eventNode
 			};
-			var domNode = render(vNode.node, subEventRoot);
+			
+			var domNode = render(subNode, subEventRoot);
 			domNode.elm_event_node_ref = subEventRoot;
 			return domNode;
 
@@ -6645,6 +6491,7 @@ function applyEvents(domNode, eventNode, events)
 		if (typeof value === 'undefined')
 		{
 			domNode.removeEventListener(key, handler);
+			allHandlers[key] = undefined;
 		}
 		else if (typeof handler === 'undefined')
 		{
@@ -6960,10 +6807,7 @@ function diffFacts(a, b, category)
 				(category === STYLE_KEY)
 					? ''
 					:
-				(category === EVENT_KEY)
-					? null
-					:
-				(category === ATTR_KEY)
+				(category === EVENT_KEY || category === ATTR_KEY)
 					? undefined
 					:
 				{ namespace: a[aKey].namespace, value: undefined };
@@ -7078,7 +6922,14 @@ function addDomNodesHelp(domNode, vNode, patches, i, low, high, eventNode)
 	switch (vNode.type)
 	{
 		case 'tagger':
-			return addDomNodesHelp(domNode, vNode.node, patches, i, low + 1, high, domNode.elm_event_node_ref);
+			var subNode = vNode.node;
+            
+			while (subNode.type === "tagger")
+			{
+				subNode = subNode.node;
+			}
+            
+			return addDomNodesHelp(domNode, subNode, patches, i, low + 1, high, domNode.elm_event_node_ref);
 
 		case 'node':
 			var vChildren = vNode.children;
@@ -7190,10 +7041,9 @@ function redraw(domNode, vNode, eventNode)
 	var parentNode = domNode.parentNode;
 	var newNode = render(vNode, eventNode);
 
-	var ref = domNode.elm_event_node_ref
-	if (typeof ref !== 'undefined')
+	if (typeof newNode.elm_event_node_ref === 'undefined')
 	{
-		newNode.elm_event_node_ref = ref;
+		newNode.elm_event_node_ref = domNode.elm_event_node_ref;
 	}
 
 	if (parentNode && newNode !== domNode)
@@ -7367,44 +7217,6 @@ var _elm_lang$html$Html$details = _elm_lang$html$Html$node('details');
 var _elm_lang$html$Html$summary = _elm_lang$html$Html$node('summary');
 var _elm_lang$html$Html$menuitem = _elm_lang$html$Html$node('menuitem');
 var _elm_lang$html$Html$menu = _elm_lang$html$Html$node('menu');
-
-var _elm_lang$html$Html_App$programWithFlags = _elm_lang$virtual_dom$VirtualDom$programWithFlags;
-var _elm_lang$html$Html_App$program = function (app) {
-	return _elm_lang$html$Html_App$programWithFlags(
-		_elm_lang$core$Native_Utils.update(
-			app,
-			{
-				init: function (_p0) {
-					return app.init;
-				}
-			}));
-};
-var _elm_lang$html$Html_App$beginnerProgram = function (_p1) {
-	var _p2 = _p1;
-	return _elm_lang$html$Html_App$programWithFlags(
-		{
-			init: function (_p3) {
-				return A2(
-					_elm_lang$core$Platform_Cmd_ops['!'],
-					_p2.model,
-					_elm_lang$core$Native_List.fromArray(
-						[]));
-			},
-			update: F2(
-				function (msg, model) {
-					return A2(
-						_elm_lang$core$Platform_Cmd_ops['!'],
-						A2(_p2.update, msg, model),
-						_elm_lang$core$Native_List.fromArray(
-							[]));
-				}),
-			view: _p2.view,
-			subscriptions: function (_p4) {
-				return _elm_lang$core$Platform_Sub$none;
-			}
-		});
-};
-var _elm_lang$html$Html_App$map = _elm_lang$virtual_dom$VirtualDom$map;
 
 var _elm_lang$mouse$Mouse$onSelfMsg = F3(
 	function (router, _p0, state) {
@@ -8058,7 +7870,62 @@ var _elm_lang$window$Window$subMap = F2(
 	});
 _elm_lang$core$Native_Platform.effectManagers['Window'] = {pkg: 'elm-lang/window', init: _elm_lang$window$Window$init, onEffects: _elm_lang$window$Window$onEffects, onSelfMsg: _elm_lang$window$Window$onSelfMsg, tag: 'sub', subMap: _elm_lang$window$Window$subMap};
 
-var _user$project$Main$outerSphereColour = A2(
+var _user$project$Types$Input = F4(
+	function (a, b, c, d) {
+		return {space: a, dir1: b, dir2: c, delta: d};
+	});
+var _user$project$Types$Position = F2(
+	function (a, b) {
+		return {x: a, y: b};
+	});
+var _user$project$Types$Force = F2(
+	function (a, b) {
+		return {magnitudeX: a, magnitudeY: b};
+	});
+var _user$project$Types$Scalar = function (a) {
+	return {size: a};
+};
+var _user$project$Types$Mass = function (a) {
+	return {size: a};
+};
+var _user$project$Types$Radius = F2(
+	function (a, b) {
+		return {magnitudeX: a, magnitudeY: b};
+	});
+var _user$project$Types$Velocity = F2(
+	function (a, b) {
+		return {magnitudeX: a, magnitudeY: b};
+	});
+var _user$project$Types$Sphere = F7(
+	function (a, b, c, d, e, f, g) {
+		return {id: a, position: b, mass: c, diameter: d, velocity: e, aliveFrames: f, merged: g};
+	});
+var _user$project$Types$World = F4(
+	function (a, b, c, d) {
+		return {spheres: a, gravitationalConstant: b, sphereLimit: c, players: d};
+	});
+var _user$project$Types$Constant = function (a) {
+	return {size: a};
+};
+var _user$project$Types$Player = F6(
+	function (a, b, c, d, e, f) {
+		return {name: a, position: b, side: c, score: d, size: e, velocity: f};
+	});
+var _user$project$Types$Pause = {ctor: 'Pause'};
+var _user$project$Types$Play = {ctor: 'Play'};
+var _user$project$Types$WindowSize = function (a) {
+	return {ctor: 'WindowSize', _0: a};
+};
+var _user$project$Types$Click = function (a) {
+	return {ctor: 'Click', _0: a};
+};
+var _user$project$Types$Tick = function (a) {
+	return {ctor: 'Tick', _0: a};
+};
+var _user$project$Types$Right = {ctor: 'Right'};
+var _user$project$Types$Left = {ctor: 'Left'};
+
+var _user$project$View$outerSphereColour = A2(
 	_elm_lang$svg$Svg$stop,
 	_elm_lang$core$Native_List.fromArray(
 		[
@@ -8068,7 +7935,7 @@ var _user$project$Main$outerSphereColour = A2(
 		]),
 	_elm_lang$core$Native_List.fromArray(
 		[]));
-var _user$project$Main$innerSphereColour = A2(
+var _user$project$View$innerSphereColour = A2(
 	_elm_lang$svg$Svg$stop,
 	_elm_lang$core$Native_List.fromArray(
 		[
@@ -8078,7 +7945,7 @@ var _user$project$Main$innerSphereColour = A2(
 		]),
 	_elm_lang$core$Native_List.fromArray(
 		[]));
-var _user$project$Main$sphereGradientColour = A2(
+var _user$project$View$sphereGradientColour = A2(
 	_elm_lang$svg$Svg$radialGradient,
 	_elm_lang$core$Native_List.fromArray(
 		[
@@ -8090,8 +7957,8 @@ var _user$project$Main$sphereGradientColour = A2(
 			_elm_lang$svg$Svg_Attributes$fy('50%')
 		]),
 	_elm_lang$core$Native_List.fromArray(
-		[_user$project$Main$innerSphereColour, _user$project$Main$outerSphereColour]));
-var _user$project$Main$createCircle = function (sphere) {
+		[_user$project$View$innerSphereColour, _user$project$View$outerSphereColour]));
+var _user$project$View$createCircle = function (sphere) {
 	return A2(
 		_elm_lang$svg$Svg$circle,
 		_elm_lang$core$Native_List.fromArray(
@@ -8105,336 +7972,71 @@ var _user$project$Main$createCircle = function (sphere) {
 				_elm_lang$svg$Svg_Attributes$fill('url(#grad1)')
 			]),
 		_elm_lang$core$Native_List.fromArray(
-			[_user$project$Main$sphereGradientColour]));
+			[_user$project$View$sphereGradientColour]));
 };
-var _user$project$Main$createCircles = function (world) {
+var _user$project$View$createCircles = function (world) {
 	return A2(
 		_elm_lang$core$List$map,
 		function (e) {
-			return _user$project$Main$createCircle(e);
+			return _user$project$View$createCircle(e);
 		},
 		world.spheres);
 };
-var _user$project$Main$view = function (model) {
-	var h = '900px';
-	var w = '1400px';
+var _user$project$View$graphicHeight = 600;
+var _user$project$View$graphicWidth = 1000;
+var _user$project$View$graphicContainer = function (model) {
+	var offsetY = 10;
+	var offsetX = 10;
+	return A2(
+		_elm_lang$svg$Svg$rect,
+		_elm_lang$core$Native_List.fromArray(
+			[
+				_elm_lang$svg$Svg_Attributes$x(
+				_elm_lang$core$Basics$toString(offsetX)),
+				_elm_lang$svg$Svg_Attributes$y(
+				_elm_lang$core$Basics$toString(offsetY)),
+				_elm_lang$svg$Svg_Attributes$width(
+				_elm_lang$core$Basics$toString(
+					function (a) {
+						return a - (offsetX * 2);
+					}(_user$project$View$graphicWidth))),
+				_elm_lang$svg$Svg_Attributes$height(
+				_elm_lang$core$Basics$toString(
+					function (a) {
+						return a - (offsetY * 2);
+					}(_user$project$View$graphicHeight))),
+				_elm_lang$svg$Svg_Attributes$fill('none'),
+				_elm_lang$svg$Svg_Attributes$stroke('blue'),
+				_elm_lang$svg$Svg_Attributes$strokeWidth('6'),
+				_elm_lang$svg$Svg_Attributes$strokeOpacity('0.2')
+			]),
+		_elm_lang$core$Native_List.fromArray(
+			[]));
+};
+var _user$project$View$view = function (model) {
 	return A2(
 		_elm_lang$svg$Svg$svg,
 		_elm_lang$core$Native_List.fromArray(
 			[
-				_elm_lang$svg$Svg_Attributes$width(w),
-				_elm_lang$svg$Svg_Attributes$height(h)
+				_elm_lang$svg$Svg_Attributes$width(
+				_elm_lang$core$Basics$toString(_user$project$View$graphicWidth)),
+				_elm_lang$svg$Svg_Attributes$height(
+				_elm_lang$core$Basics$toString(_user$project$View$graphicHeight)),
+				_elm_lang$svg$Svg_Attributes$style('background-color: none')
 			]),
 		A2(
 			_elm_lang$core$List$append,
 			_elm_lang$core$Native_List.fromArray(
-				[_user$project$Main$sphereGradientColour]),
-			_user$project$Main$createCircles(model)));
-};
-var _user$project$Main$defaultWorld = {
-	ctor: '_Tuple2',
-	_0: {
-		spheres: _elm_lang$core$Native_List.fromArray(
-			[])
-	},
-	_1: _elm_lang$core$Platform_Cmd$none
-};
-var _user$project$Main$sum = F2(
-	function (a, b) {
-		return a + b;
-	});
-var _user$project$Main$length = F2(
-	function (a, b) {
-		return b - a;
-	});
-var _user$project$Main$square = function (n) {
-	return Math.pow(n, 2);
-};
-var _user$project$Main$sumMagnitudeY = function (forces) {
-	return A3(
-		_elm_lang$core$List$foldl,
-		_user$project$Main$sum,
-		0,
-		A2(
-			_elm_lang$core$List$map,
-			function (f) {
-				return f.magnitudeY;
-			},
-			forces));
-};
-var _user$project$Main$sumMagnitudeX = function (forces) {
-	return A3(
-		_elm_lang$core$List$foldl,
-		_user$project$Main$sum,
-		0,
-		A2(
-			_elm_lang$core$List$map,
-			function (f) {
-				return f.magnitudeX;
-			},
-			forces));
-};
-var _user$project$Main$updateVelocityForForces = F3(
-	function (velocity, mass, forces) {
-		return _elm_lang$core$Native_Utils.update(
-			velocity,
-			{
-				magnitudeX: velocity.magnitudeX + (_user$project$Main$sumMagnitudeX(forces) / mass),
-				magnitudeY: velocity.magnitudeY + (_user$project$Main$sumMagnitudeY(forces) / mass)
-			});
-	});
-var _user$project$Main$applyForcesToObject = F2(
-	function (sphere, forces) {
-		return _elm_lang$core$Native_Utils.update(
-			sphere,
-			{
-				velocity: A3(_user$project$Main$updateVelocityForForces, sphere.velocity, sphere.mass.size, forces)
-			});
-	});
-var _user$project$Main$euclideanDistance = F2(
-	function (positionA, positionB) {
-		return _elm_lang$core$Basics$sqrt(
-			_user$project$Main$square(positionB.x - positionA.x) + _user$project$Main$square(positionB.y - positionA.y));
-	});
-var _user$project$Main$emptyForce = {magnitudeX: 0, magnitudeY: 0};
-var _user$project$Main$filterSpheres = F2(
-	function (sphere, spheres) {
-		return A2(
-			_elm_lang$core$List$filter,
-			function (e1) {
-				return !_elm_lang$core$Native_Utils.eq(e1, sphere);
-			},
-			spheres);
-	});
-var _user$project$Main$calculateNewPosistion = F2(
-	function (velocity, position) {
-		return {x: velocity.magnitudeX + position.x, y: velocity.magnitudeY + position.y};
-	});
-var _user$project$Main$updatePosistion = function (sphere) {
-	return _elm_lang$core$Native_Utils.update(
-		sphere,
-		{
-			position: A2(_user$project$Main$calculateNewPosistion, sphere.velocity, sphere.position)
-		});
-};
-var _user$project$Main$mergePosition = F2(
-	function (positionA, positionB) {
-		return _elm_lang$core$Native_Utils.update(
-			positionA,
-			{x: positionA.x + (positionB.x - positionA.x), y: positionA.y + (positionB.y - positionA.y)});
-	});
-var _user$project$Main$sumVelocity = F2(
-	function (velocityA, velocityB) {
-		return _elm_lang$core$Native_Utils.update(
-			velocityA,
-			{magnitudeX: velocityA.magnitudeX + velocityB.magnitudeX, magnitudeY: velocityA.magnitudeY + velocityB.magnitudeY});
-	});
-var _user$project$Main$sumMass = F2(
-	function (massA, massB) {
-		return _elm_lang$core$Native_Utils.update(
-			massA,
-			{size: massA.size + massB.size});
-	});
-var _user$project$Main$mergeSphere = F2(
-	function (sphereA, sphereB) {
-		return _elm_lang$core$Native_Utils.update(
-			sphereA,
-			{
-				mass: A2(_user$project$Main$sumMass, sphereA.mass, sphereB.mass),
-				velocity: A2(_user$project$Main$sumVelocity, sphereA.velocity, sphereB.velocity),
-				position: A2(_user$project$Main$mergePosition, sphereA.position, sphereB.position)
-			});
-	});
-var _user$project$Main$collided = F2(
-	function (sphereA, sphereB) {
-		var distance = A2(_user$project$Main$euclideanDistance, sphereA.position, sphereB.position);
-		return (_elm_lang$core$Native_Utils.cmp(distance, sphereA.diameter) < 0) && (_elm_lang$core$Native_Utils.cmp(distance, sphereB.diameter) < 0);
-	});
-var _user$project$Main$detectAndMergeCollisions = function (spheres) {
-	return spheres;
-};
-var _user$project$Main$updatePosistions = function (spheres) {
-	return A2(
-		_elm_lang$core$List$map,
-		function (e) {
-			return _user$project$Main$updatePosistion(e);
-		},
-		spheres);
-};
-var _user$project$Main$incrementLifetime = function (spheres) {
-	return A2(
-		_elm_lang$core$List$map,
-		function (e) {
-			return _elm_lang$core$Native_Utils.update(
-				e,
-				{aliveFrames: e.aliveFrames + 1});
-		},
-		spheres);
-};
-var _user$project$Main$limitSpheres = function (spheres) {
-	return spheres;
-};
-var _user$project$Main$createSphere = F2(
-	function (x, y) {
-		return {
-			name: 'A',
-			position: {x: x, y: y},
-			mass: {size: 10},
-			diameter: 10,
-			velocity: {magnitudeX: 0, magnitudeY: 0},
-			aliveFrames: 0
-		};
-	});
-var _user$project$Main$addNewSphere = F2(
-	function (position, world) {
-		return _elm_lang$core$Native_Utils.update(
-			world,
-			{
-				spheres: A2(
-					_elm_lang$core$List$append,
-					world.spheres,
-					_elm_lang$core$Native_List.fromArray(
-						[
-							A2(
-							_user$project$Main$createSphere,
-							_elm_lang$core$Basics$toFloat(position.x),
-							_elm_lang$core$Basics$toFloat(position.y))
-						]))
-			});
-	});
-var _user$project$Main$sphereLimit = 5;
-var _user$project$Main$gravitaionalConstant = 0.5;
-var _user$project$Main$calculateGravitationScalar = F3(
-	function (mass1, mass2, distance) {
-		return {
-			size: ((mass1.size * mass2.size) / Math.pow(distance, 2)) * (0 - _user$project$Main$gravitaionalConstant)
-		};
-	});
-var _user$project$Main$calculateGravitation = F3(
-	function (dt, sphereA, sphereB) {
-		var distance = A2(_user$project$Main$euclideanDistance, sphereA.position, sphereB.position);
-		var force = A3(_user$project$Main$calculateGravitationScalar, sphereA.mass, sphereB.mass, distance);
-		return ((_elm_lang$core$Native_Utils.cmp(distance, sphereA.diameter) < 0) && (_elm_lang$core$Native_Utils.cmp(distance, sphereB.diameter) < 0)) ? _user$project$Main$emptyForce : {magnitudeX: (dt * force.size) * ((sphereA.position.x - sphereB.position.x) / distance), magnitudeY: (dt * force.size) * ((sphereA.position.y - sphereB.position.y) / distance)};
-	});
-var _user$project$Main$applyGravitationForAll = F3(
-	function (dt, sphereA, spheres) {
-		return A2(
-			_user$project$Main$applyForcesToObject,
-			sphereA,
-			A2(
-				_elm_lang$core$List$map,
-				function (s) {
-					return A3(_user$project$Main$calculateGravitation, dt, sphereA, s);
-				},
-				A2(
-					_elm_lang$core$List$filter,
-					function (s) {
-						return !_elm_lang$core$Native_Utils.eq(s, sphereA);
-					},
-					spheres)));
-	});
-var _user$project$Main$applyForces = F2(
-	function (dt, spheres) {
-		return A2(
-			_elm_lang$core$List$map,
-			function (e) {
-				return A3(_user$project$Main$applyGravitationForAll, dt, e, spheres);
-			},
-			spheres);
-	});
-var _user$project$Main$applyPhysics = F2(
-	function (dt, world) {
-		return _elm_lang$core$Native_Utils.update(
-			world,
-			{
-				spheres: _user$project$Main$incrementLifetime(
-					_user$project$Main$limitSpheres(
-						_user$project$Main$detectAndMergeCollisions(
-							_user$project$Main$updatePosistions(
-								A2(_user$project$Main$applyForces, dt, world.spheres)))))
-			});
-	});
-var _user$project$Main$update = F2(
-	function (msg, world) {
-		var _p0 = msg;
-		switch (_p0.ctor) {
-			case 'Tick':
-				return {
-					ctor: '_Tuple2',
-					_0: A2(_user$project$Main$applyPhysics, _p0._0, world),
-					_1: _elm_lang$core$Platform_Cmd$none
-				};
-			case 'Click':
-				return {
-					ctor: '_Tuple2',
-					_0: A2(_user$project$Main$addNewSphere, _p0._0, world),
-					_1: _elm_lang$core$Platform_Cmd$none
-				};
-			default:
-				return {ctor: '_Tuple2', _0: world, _1: _elm_lang$core$Platform_Cmd$none};
-		}
-	});
-var _user$project$Main$Input = F4(
-	function (a, b, c, d) {
-		return {space: a, dir1: b, dir2: c, delta: d};
-	});
-var _user$project$Main$Position = F2(
-	function (a, b) {
-		return {x: a, y: b};
-	});
-var _user$project$Main$Force = F2(
-	function (a, b) {
-		return {magnitudeX: a, magnitudeY: b};
-	});
-var _user$project$Main$Scalar = function (a) {
-	return {size: a};
-};
-var _user$project$Main$Mass = function (a) {
-	return {size: a};
-};
-var _user$project$Main$Radius = F2(
-	function (a, b) {
-		return {magnitudeX: a, magnitudeY: b};
-	});
-var _user$project$Main$Velocity = F2(
-	function (a, b) {
-		return {magnitudeX: a, magnitudeY: b};
-	});
-var _user$project$Main$Sphere = F6(
-	function (a, b, c, d, e, f) {
-		return {name: a, position: b, mass: c, diameter: d, velocity: e, aliveFrames: f};
-	});
-var _user$project$Main$World = function (a) {
-	return {spheres: a};
-};
-var _user$project$Main$Pause = {ctor: 'Pause'};
-var _user$project$Main$Play = {ctor: 'Play'};
-var _user$project$Main$WindowSize = function (a) {
-	return {ctor: 'WindowSize', _0: a};
-};
-var _user$project$Main$Click = function (a) {
-	return {ctor: 'Click', _0: a};
-};
-var _user$project$Main$Tick = function (a) {
-	return {ctor: 'Tick', _0: a};
-};
-var _user$project$Main$subscriptions = function (world) {
-	return _elm_lang$core$Platform_Sub$batch(
-		_elm_lang$core$Native_List.fromArray(
-			[
-				_elm_lang$animation_frame$AnimationFrame$diffs(_user$project$Main$Tick),
-				_elm_lang$mouse$Mouse$clicks(_user$project$Main$Click),
-				_elm_lang$window$Window$resizes(_user$project$Main$WindowSize)
-			]));
-};
-var _user$project$Main$main = {
-	main: _elm_lang$html$Html_App$program(
-		{init: _user$project$Main$defaultWorld, subscriptions: _user$project$Main$subscriptions, update: _user$project$Main$update, view: _user$project$Main$view})
+				[
+					_user$project$View$sphereGradientColour,
+					_user$project$View$graphicContainer(model)
+				]),
+			_user$project$View$createCircles(model)));
 };
 
 var Elm = {};
-Elm['Main'] = Elm['Main'] || {};
-_elm_lang$core$Native_Platform.addPublicModule(Elm['Main'], 'Main', typeof _user$project$Main$main === 'undefined' ? null : _user$project$Main$main);
+Elm['View'] = Elm['View'] || {};
+_elm_lang$core$Native_Platform.addPublicModule(Elm['View'], 'View', typeof _user$project$View$main === 'undefined' ? null : _user$project$View$main);
 
 if (typeof define === "function" && define['amd'])
 {

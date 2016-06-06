@@ -5,16 +5,30 @@ import Svg.Attributes exposing (..)
 import Html exposing (..)
 import Types exposing (..)
 
+
+graphicWidth = 1000
+graphicHeight = 600
+
 view : World -> Html Msg
 view model =
-    let 
-        w = "1400px"
-        h = "900px"
-        -- w = (toString Window.width) ++ "px"
-        -- h = (toString Window.height) ++ "px"
+    Svg.svg [ Svg.Attributes.width (toString graphicWidth), Svg.Attributes.height (toString graphicHeight), Svg.Attributes.style "background-color: none" ] 
+    ( (List.append [sphereGradientColour, graphicContainer model] (createCircles model)))
+
+graphicContainer : World -> Svg.Svg msg
+graphicContainer model =
+    let offsetX = 10
+        offsetY = 10
     in
-    Svg.svg [ Svg.Attributes.width w, Svg.Attributes.height h, Svg.Attributes.style "background-color: lightgray" ] (List.append [sphereGradientColour] (createCircles model))
-      
+        Svg.rect [
+            Svg.Attributes.x (toString offsetX)
+            , Svg.Attributes.y (toString offsetY)
+            , Svg.Attributes.width (graphicWidth |> (\a -> a - offsetX * 2) |> toString)
+            , Svg.Attributes.height (graphicHeight |> (\a -> a - offsetY * 2) |> toString)
+            , Svg.Attributes.fill "none"
+            , Svg.Attributes.stroke "blue"
+            , Svg.Attributes.strokeWidth "6"
+            , Svg.Attributes.strokeOpacity "0.2"
+            ] []
       
 createCircles : World -> List (Svg.Svg msg)
 createCircles world = 
@@ -23,6 +37,10 @@ createCircles world =
 createCircle : Sphere -> Svg.Svg msg
 createCircle sphere = 
     circle [ cx (toString sphere.position.x), cy (toString sphere.position.y), r (toString sphere.diameter), fill "url(#grad1)" ] [sphereGradientColour]
+
+-- createPlayer : Player -> Svg.Svg msg
+-- createPlayer sphere = 
+--     circle [ cx (toString sphere.position.x), cy (toString sphere.position.y), r (toString sphere.diameter), fill "url(#grad1)" ] [sphereGradientColour]
     
 sphereGradientColour : Svg.Svg msg
 sphereGradientColour  =

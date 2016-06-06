@@ -49,6 +49,7 @@ type alias Velocity =
         magnitudeY : Float
     }
 
+
 type alias Sphere = 
     { 
         id : String,
@@ -62,12 +63,25 @@ type alias Sphere =
     
 type alias World =
     {
-        spheres : List (Sphere),
-        gravitationalConstant : Constant,
-        sphereLimit : Constant
+        spheres : List (Sphere)
+        ,gravitationalConstant : Constant
+        ,sphereLimit : Constant
+        ,players : List (Player)
     }
     
 type alias Constant = 
     {
         size : Float
     }
+
+type alias Player =
+    {
+        name : String
+        , position : Position
+        , side : Side
+        , score : Float
+        , size : Float
+        , velocity : Velocity
+    }
+
+type Side = Left | Right
