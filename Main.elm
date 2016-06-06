@@ -1,15 +1,15 @@
 module Main exposing (..)
 
 import Html.App
-import Html exposing (..)
-import Html.Attributes exposing (..)
-import Html.Events exposing (onInput)
+
 import Time exposing (Time, second, millisecond)
-import Svg exposing (..)
-import Svg.Attributes exposing (..)
+
+
 import AnimationFrame
 import Mouse
 import Window exposing (..)
+import Types exposing (..)
+import View exposing (..)
 
 
 -- MAIN
@@ -19,76 +19,9 @@ main =
     { init = defaultWorld
     , subscriptions = subscriptions
     , update = update
-    , view = view
+    , view = View.view
     }
-    
--- MODEL
-type State = Play | Pause
-
-type alias Input =
-  { space : Bool
-  , dir1 : Int
-  , dir2 : Int
-  , delta : Time
-  }
-  
-type alias Position = 
-    {
-        x : Float,
-        y : Float
-    }
-     
-type alias Force =
-    {
-        magnitudeX : Float,
-        magnitudeY : Float
-    }
-    
-type alias Scalar =
-    {
-        size : Float
-    }
-     
-type alias Mass = 
-    {
-        size : Float
-    }
-    
-type alias Radius = 
-    {
-        magnitudeX : Float,
-        magnitudeY : Float
-    }
-    
-type alias Velocity =
-    {
-        magnitudeX : Float,
-        magnitudeY : Float
-    }
-
-type alias Sphere = 
-    { 
-        id : String,
-        position : Position,
-        mass : Mass,
-        diameter: Float,
-        velocity : Velocity,
-        aliveFrames : Float,
-        merged : Bool
-    }
-    
-type alias World =
-    {
-        spheres : List (Sphere),
-        gravitationalConstant : Constant,
-        sphereLimit : Constant
-    }
-    
-type alias Constant = 
-    {
-        size : Float
-    }
-    
+      
 -- Update
 
 update : Msg -> World -> (World, Cmd Msg)
@@ -162,8 +95,11 @@ collided sphereA sphereB =
     
 mergeSphere : Sphere -> Sphere -> Sphere
 mergeSphere sphereA sphereB = 
-    { sphereA | mass = sumMass sphereA.mass sphereB.mass, velocity = sumVelocity sphereA.velocity sphereB.velocity, position =  mergePosition sphereA.position sphereB.position}
-    |> updateDiameter
+    let sphereAPost = { sphereA | mass = sumMass sphereA.mass sphereB.mass, position =  mergePosition sphereA.position sphereB.position}
+        sphereBPost = { sphereB | mass = {size = 0}, position =  mergePosition sphereA.position sphereB.position, velocity = {magnitudeX = 0, magnitudeY = 0}}
+    in
+        (updateVelocity sphereA sphereB sphereAPost sphereBPost)
+        |> updateDiameter
     
 markAsMerged : Sphere -> Sphere
 markAsMerged sphere = 
@@ -173,9 +109,12 @@ sumMass : Mass -> Mass -> Mass
 sumMass massA massB = 
     {massA | size = massA.size + massB.size }
 
-sumVelocity : Velocity -> Velocity -> Velocity
-sumVelocity velocityA velocityB = 
-    { velocityA | magnitudeX = velocityA.magnitudeX + velocityB.magnitudeX, magnitudeY = velocityA.magnitudeY + velocityB.magnitudeY}
+calculateNewVelocity : Sphere -> Sphere -> Sphere -> Sphere -> Velocity
+calculateNewVelocity sphereAPrior sphereBPrior sphereAPost sphereBPost = 
+    { 
+        magnitudeX = calculateNewVelocityInAxis sphereAPrior.mass.size sphereBPrior.mass.size sphereAPrior.velocity.magnitudeX sphereBPrior.velocity.magnitudeX sphereAPost.mass.size sphereBPost.mass.size sphereAPost.velocity.magnitudeX sphereBPost.velocity.magnitudeX, 
+        magnitudeY = calculateNewVelocityInAxis sphereAPrior.mass.size sphereBPrior.mass.size sphereAPrior.velocity.magnitudeY sphereBPrior.velocity.magnitudeY sphereAPost.mass.size sphereBPost.mass.size sphereAPost.velocity.magnitudeY sphereBPost.velocity.magnitudeY
+    }
     
 mergePosition : Position -> Position -> Position
 mergePosition positionA positionB = 
@@ -185,6 +124,21 @@ updatePosistion : Sphere -> Sphere
 updatePosistion sphere = 
     { sphere | position = calculateNewPosistion sphere.velocity sphere.position}
     
+updateVelocity : Sphere -> Sphere -> Sphere -> Sphere -> Sphere
+updateVelocity sphereAPrior sphereBPrior sphereAPost sphereBPost =
+    { sphereAPost | velocity = calculateNewVelocity sphereAPrior sphereBPrior sphereAPost sphereBPost }    
+
+calculateMomentum : Float -> Float -> Float
+calculateMomentum mass velocity =
+    mass * velocity
+
+-- conservation of momentum  (m1 * v1 = m1' * v1')
+calculateNewVelocityInAxis : Float -> Float -> Float -> Float -> Float -> Float -> Float -> Float -> Float
+calculateNewVelocityInAxis massA massB velocityA velocityB massA' massB' velocityA' velocityB' =
+    let momentumBefore = (massA * velocityA) + (massB * velocityB)
+    in 
+        momentumBefore / massA'
+        
 calculateNewPosistion : Velocity -> Position -> Position
 calculateNewPosistion velocity position = 
     {
@@ -305,7 +259,7 @@ defaultWorld =
  Cmd.none
  )
  
-type Msg = Tick Time | Click Mouse.Position | WindowSize Window.Size
+
  
 subscriptions : World -> Sub Msg
 subscriptions world =
@@ -314,35 +268,3 @@ subscriptions world =
       Mouse.clicks Click,
       Window.resizes WindowSize
   ]
-
--- VIEW
-view : World -> Html Msg
-view model =
-    let 
-        w = "1400px"
-        h = "900px"
-        -- w = (toString Window.width) ++ "px"
-        -- h = (toString Window.height) ++ "px"
-    in
-    Svg.svg [ Svg.Attributes.width w, Svg.Attributes.height h, Svg.Attributes.style "background-color: lightgray" ] (List.append [sphereGradientColour] (createCircles model))
-      
-      
-createCircles : World -> List (Svg.Svg msg)
-createCircles world = 
-    List.map (\e-> createCircle e) world.spheres
-    
-createCircle : Sphere -> Svg.Svg msg
-createCircle sphere = 
-    circle [ cx (toString sphere.position.x), cy (toString sphere.position.y), r (toString sphere.diameter), fill "url(#grad1)" ] [sphereGradientColour]
-    
-sphereGradientColour : Svg.Svg msg
-sphereGradientColour  =
-    radialGradient [Svg.Attributes.id "grad1", cx "50%", cy "50%", r "50%", fx "50%", fy "50%" ] [innerSphereColour, outerSphereColour]
-
-innerSphereColour : Svg.Svg msg
-innerSphereColour =
-    Svg.stop [offset "0%", stopColor "#0B79CE", stopOpacity "0.3" ] []
-    
-outerSphereColour : Svg.Svg msg
-outerSphereColour =
-    Svg.stop [offset "100%", stopColor "#0B79CE", stopOpacity "1" ] []
