@@ -67,6 +67,7 @@ type alias World =
         ,gravitationalConstant : Constant
         ,sphereLimit : Constant
         ,players : List (Player)
+        ,sides : List (Side)
     }
     
 type alias Constant = 
