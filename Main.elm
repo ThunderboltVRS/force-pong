@@ -205,7 +205,7 @@ mergeSpheres testSphere otherSpheres =
         if List.isEmpty spheresCollided then
             testSphere 
         else
-            if (List.any (\f -> f.mass.size > testSphere.mass.size) spheresCollided) || (List.any (\f -> f.aliveFrames > testSphere.aliveFrames) spheresCollided) then
+            if (List.any (\f -> f.mass.size > testSphere.mass.size) spheresCollided) || (List.any (\f -> f.aliveFrames > testSphere.aliveFrames && f.mass.size == testSphere.mass.size) spheresCollided) then
                 markAsMerged testSphere
             else
                 List.foldl mergeSphere testSphere spheresCollided
