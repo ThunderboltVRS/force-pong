@@ -7,9 +7,9 @@ import Update exposing (..)
 
 main : Program Never
 main =
-  Html.App.program
-    { init = defaultWorld
-    , subscriptions = subscriptions
-    , update = update
-    , view = View.view
-    }
+    Html.App.program
+        { init = defaultWorld
+        , subscriptions = subscriptions
+        , update = update
+        , view = View.view
+        }

@@ -4,85 +4,126 @@ import Time exposing (Time, second, millisecond)
 import Mouse
 import Window exposing (..)
 
-type State = Play | Pause
 
-type Msg = Tick Time | Click Mouse.Position | WindowSize Window.Size
+type Msg
+    = Tick Time
+    | Click Mouse.Position
+    | WindowSize Window.Size
+    | KeyDown Int
+    | KeyUp Int
 
-type alias Input =
-  { space : Bool
-  , dir1 : Int
-  , dir2 : Int
-  , delta : Time
-  }
-  
-type alias Position = 
-    {
-        x : Float,
-        y : Float
+
+type Side
+    = Left
+    | Right
+
+
+type KeyboardKeyAction
+    = Pressed
+    | NotPressed
+
+
+type PlayerDirection
+    = Up
+    | Down
+
+
+type State
+    = Play
+    | Pause
+
+
+type PlayerNumber
+    = One
+    | Two
+
+
+type alias Position =
+    { x : Float
+    , y : Float
     }
-     
+
+
 type alias Force =
-    {
-        magnitudeX : Float,
-        magnitudeY : Float
+    { x : Float
+    , y : Float
     }
-    
+
+
 type alias Scalar =
-    {
-        size : Float
+    { size : Float
     }
-     
-type alias Mass = 
-    {
-        size : Float
+
+
+type alias Mass =
+    { size : Float
     }
-    
-type alias Radius = 
-    {
-        magnitudeX : Float,
-        magnitudeY : Float
+
+
+type alias Radius =
+    { x : Float
+    , y : Float
     }
-    
+
+
 type alias Velocity =
-    {
-        magnitudeX : Float,
-        magnitudeY : Float
+    { x : Float
+    , y : Float
     }
 
 
-type alias Sphere = 
-    { 
-        id : String,
-        position : Position,
-        mass : Mass,
-        diameter: Float,
-        velocity : Velocity,
-        aliveFrames : Float,
-        merged : Bool
+type alias Sphere =
+    { id : String
+    , position : Position
+    , mass : Mass
+    , diameter : Float
+    , velocity : Velocity
+    , aliveFrames : Float
+    , merged : Bool
+    , scale : Float
     }
-    
+
+
 type alias World =
-    {
-        spheres : List (Sphere)
-        ,gravitationalConstant : Constant
-        ,sphereLimit : Constant
-        ,players : List (Player)
-        ,sides : List (Side)
+    { spheres : List (Sphere)
+    , gravitationalConstant : Constant
+    , sphereLimit : Constant
+    , players : List (Player)
+    , state : State
+    , graphicSettings : GraphicSettings
+    , leftSideLine : SideLine
+    , rightSideLine : SideLine
     }
-    
-type alias Constant = 
-    {
-        size : Float
+
+
+type alias Constant =
+    { size : Float
     }
+
 
 type alias Player =
-    {
-        name : String
-        , position : Position
-        , side : Side
-        , score : Float
-        , size : Float
-        , velocity : Velocity
+    { number : PlayerNumber
+    , position : Position
+    , side : Side
+    , score : Float
+    , size : Float
+    , velocity : Velocity
+    , upAction : KeyboardKeyAction
+    , downAction : KeyboardKeyAction
+    , mass : Mass
     }
 
-type Side = Left | Right
+type alias GraphicSettings =
+    {
+        graphicWidth : Float
+        , graphicHeight : Float
+    }
+
+type alias SideLine =
+    {
+        side : Side
+        , x1 : Float
+        , x2 : Float
+        , y1 : Float
+        , y2 : Float
+    }
