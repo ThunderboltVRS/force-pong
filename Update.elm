@@ -2,6 +2,7 @@ module Update exposing (..)
 
 import Types exposing (..)
 import Keyboard exposing (..)
+import List.Extra exposing (..)
 
 
 -- Update
@@ -11,7 +12,7 @@ update : Msg -> World -> ( World, Cmd Msg )
 update msg world =
     case msg of
         Tick dt ->
-            ( applyPhysics dt world, Cmd.none )
+            ( applyScoring(applyPhysics dt world), Cmd.none )
 
         Click position ->
             -- ( addNewSphere position world |> limitSpheres, Cmd.none )
@@ -47,16 +48,20 @@ applyPlayerKeyChange keyCode action world =
             updatePlayerActions world Left action Down
 
         68 ->
+            -- Left Shoot
             case action of
                 Pressed ->
                     attemptShot world Left
+
                 NotPressed ->
                     world
 
         37 ->
+            -- Right shoot
             case action of
                 Pressed ->
                     attemptShot world Right
+
                 NotPressed ->
                     world
 
@@ -103,26 +108,40 @@ attemptShot world side =
 
 shootBall : Player -> World -> World
 shootBall player world =
-    { world | spheres = List.append world.spheres [ createSphere { x = player.position.x, y = player.position.y } { size = 10 } (caclulateShotVelocity player) ] }
+    { world | spheres = List.append world.spheres [ createSphere (caclulateShotPosition player) { size = 10 } (caclulateShotVelocity player) ] }
 
 
 caclulateShotVelocity : Player -> Velocity
 caclulateShotVelocity player =
     let
-        velocityX =
-            player.mass.size * 0.1
-        velocityDampnerY =
-             0.1
+        velocityMultiplierY =
+            0.08
+
+        velocityMultiplierX =
+            0.4
     in
         { x =
             case player.side of
                 Left ->
-                    velocityX
+                    player.mass.size * velocityMultiplierX
 
                 Right ->
-                    negate velocityX
-        , y = player.velocity.y * velocityDampnerY
+                    negate (player.mass.size * velocityMultiplierX)
+        , y = player.velocity.y * velocityMultiplierY
         }
+
+
+caclulateShotPosition : Player -> Position
+caclulateShotPosition player =
+    { x =
+        case player.side of
+            Left ->
+                player.position.x
+
+            Right ->
+                player.position.x
+    , y = player.position.y + (player.size / 2)
+    }
 
 
 createSphere : Position -> Mass -> Velocity -> Sphere
@@ -137,18 +156,26 @@ createSphere position initialMass velocity =
         , diameter = calculateDiameter scale initialMass.size
         , velocity = velocity
         , aliveFrames = 0
-        , merged = False
         , scale = scale
         }
+
+applyScoring : World -> World
+applyScoring world =
+    { world
+        | spheres = world.spheres
+        , players = world.players
+    }
 
 
 applyPhysics : Float -> World -> World
 applyPhysics dt world =
     { world
         | spheres =
-            applyForces world.gravitationalConstant dt world.spheres
+            applyForces world.physicsSettings.gravitationalConstant dt world.spheres
+                |> applyBoundaryCollisions world
                 |> updateSpherePositions
-                |> detectAndMergeCollisions
+                |> applySphereCollisions
+                |> applyPaddleCollisions world
                 |> incrementLifetime
         , players =
             applyPlayerForces dt world.players
@@ -216,24 +243,95 @@ updateSpherePositions spheres =
     List.map (\e -> updateSpherePosistion e) spheres
 
 
+applyPaddleCollisions : World -> List (Sphere) -> List (Sphere)
+applyPaddleCollisions world spheres =
+    List.map (\e -> applyPaddleCollision e world) spheres
+
+
+applyPaddleCollision : Sphere -> World -> Sphere
+applyPaddleCollision sphere world =
+    if (collidedWithPaddle world sphere (findPlayer Left world.players)) then
+        { sphere | velocity = { x = makePositive sphere.velocity.x, y = sphere.velocity.y } }
+        --, position = getPaddleCollidePosition sphere world Left }
+    else if (collidedWithPaddle world sphere (findPlayer Right world.players)) then
+        { sphere | velocity = { x = makeNegative sphere.velocity.x, y = sphere.velocity.y } }
+        --, position = getPaddleCollidePosition sphere world Right }
+    else
+        sphere
+
+
+getPaddleCollidePosition : Sphere -> World -> Side -> Position
+getPaddleCollidePosition sphere world side =
+    -- Don't allow collided sphere to be beyond scoreLine: reset poistion
+    case side of
+        Left ->
+            { x = world.leftSideLine.x2 + sphereRadius sphere, y = sphere.position.y }
+
+        Right ->
+            { x = world.rightSideLine.x1 - sphereRadius sphere, y = sphere.position.y }
+
+
+findPlayer : Side -> List (Player) -> Maybe Player
+findPlayer side players =
+    List.head (List.filter (\e -> e.side == side) players)
+
+
+collidedWithPaddle : World -> Sphere -> Maybe Player -> Bool
+collidedWithPaddle world sphere player =
+    case player of
+        Nothing ->
+            False
+
+        Just p ->
+            case p.side of
+                Left ->
+                    ((sphere.position.x - sphereRadius sphere) < world.leftSideLine.x2)
+
+                Right ->
+                    ((sphere.position.x - sphereRadius sphere) > world.rightSideLine.x1)
+
+applyBoundaryCollisions : World -> List (Sphere) -> List (Sphere)
+applyBoundaryCollisions world spheres =
+    List.map (\e -> applyVerticalBoundaryCollisions(applyHorizontalBoundaryCollisions e world) world) spheres
+
+
+applyHorizontalBoundaryCollisions : Sphere -> World -> Sphere
+applyHorizontalBoundaryCollisions sphere world =
+    if ((sphere.position.y - sphereRadius sphere) < world.leftSideLine.y1) then
+        { sphere | velocity = { x = sphere.velocity.x, y = makePositive sphere.velocity.y } }
+    else if ((sphere.position.y + sphereRadius sphere) > world.leftSideLine.y2) then
+        { sphere | velocity = { x = sphere.velocity.x, y = makeNegative sphere.velocity.y } }
+    else
+        sphere
+
+applyVerticalBoundaryCollisions : Sphere -> World -> Sphere
+applyVerticalBoundaryCollisions sphere world =
+    if ((sphere.position.x - sphereRadius sphere) < world.leftSideLine.x2) then
+        { sphere | velocity = { x = makePositive sphere.velocity.x, y = sphere.velocity.y } }
+    else if ((sphere.position.x + sphereRadius sphere) > world.rightSideLine.x1) then
+        { sphere | velocity = { x = makeNegative sphere.velocity.x, y = sphere.velocity.y } }
+    else
+        sphere
+
+
+makePositive : Float -> Float
+makePositive x =
+    abs x
+
+
+makeNegative : Float -> Float
+makeNegative x =
+    abs x |> negate
+
+
 updatePlayerPositions : List (Player) -> List (Player)
 updatePlayerPositions players =
     List.map (\e -> updatePlayerPosistion e) players
 
 
-detectAndMergeCollisions : List (Sphere) -> List (Sphere)
-detectAndMergeCollisions spheres =
-    List.map (\e -> mergeSpheres e (List.filter (\e1 -> e1 /= e) spheres)) spheres
-        |> removeMergedSpheres
-
-
-collided : Sphere -> Sphere -> Bool
-collided sphereA sphereB =
-    let
-        distance =
-            euclideanDistance sphereA.position sphereB.position
-    in
-        distance < sphereA.diameter && distance < sphereB.diameter
+applySphereCollisions : List (Sphere) -> List (Sphere)
+applySphereCollisions spheres =
+    filterNothings (List.map mergeSpheres (groupByCollisions spheres))
 
 
 mergeSphere : Sphere -> Sphere -> Sphere
@@ -246,11 +344,6 @@ mergeSphere sphereA sphereB =
             { sphereB | mass = { size = 0 }, position = { x = 0, y = 0 }, velocity = { x = 0, y = 0 } }
     in
         updateDiameter sphereA.scale (updateVelocity sphereA sphereB sphereAPost sphereBPost)
-
-
-markAsMerged : Sphere -> Sphere
-markAsMerged sphere =
-    { sphere | merged = True }
 
 
 sumMass : Mass -> Mass -> Mass
@@ -372,20 +465,6 @@ sumY forces =
     List.sum (List.map (\f -> f.y) forces)
 
 
-mergeSpheres : Sphere -> List (Sphere) -> Sphere
-mergeSpheres testSphere otherSpheres =
-    let
-        spheresCollided =
-            collidedSpheres testSphere otherSpheres
-    in
-        if List.isEmpty spheresCollided then
-            testSphere
-        else if (List.any (\f -> f.mass.size > testSphere.mass.size) spheresCollided) || (List.any (\f -> f.aliveFrames > testSphere.aliveFrames && f.mass.size == testSphere.mass.size) spheresCollided) then
-            markAsMerged testSphere
-        else
-            List.foldl mergeSphere testSphere spheresCollided
-
-
 updateDiameter : Float -> Sphere -> Sphere
 updateDiameter scale sphere =
     { sphere | diameter = calculateDiameter scale sphere.mass.size }
@@ -399,16 +478,54 @@ calculateDiameter scale mass =
         |> (*) scale
 
 
-removeMergedSpheres : List (Sphere) -> List (Sphere)
-removeMergedSpheres spheres =
-    List.filter (\e -> e.merged == False) spheres
+hasCollided : Sphere -> Sphere -> Bool
+hasCollided sphereA sphereB =
+    euclideanDistance sphereA.position sphereB.position < ((sphereRadius sphereA) + (sphereRadius sphereB))
 
 
-collidedSpheres : Sphere -> List (Sphere) -> List (Sphere)
-collidedSpheres sphere otherSpheres =
-    List.filter (\e -> euclideanDistance sphere.position e.position < (sphere.diameter + e.diameter)) otherSpheres
+sphereRadius : Sphere -> Float
+sphereRadius sphere =
+    sphere.diameter / 2
 
 
 square : number -> number
 square n =
     n ^ 2
+
+
+mergeSpheres : List (Sphere) -> Maybe Sphere
+mergeSpheres spheres =
+    let
+        lastSphere =
+            (List.head (List.reverse spheres))
+
+        -- filter out the last sphere so we don't merge it with itself
+        filteredSpheres =
+            List.tail (List.reverse spheres)
+    in
+        if (List.length spheres == 1) then
+            lastSphere
+        else
+            case lastSphere of
+                Nothing ->
+                    Maybe.Nothing
+
+                Just l ->
+                    case filteredSpheres of
+                        -- only one sphere: return it
+                        Nothing ->
+                            Just l
+
+                        -- merge spheres
+                        Just f ->
+                            Just (List.foldr mergeSphere l f)
+
+
+groupByCollisions : List (Sphere) -> List (List (Sphere))
+groupByCollisions spheres =
+    List.Extra.groupWhile (\x y -> hasCollided x y) spheres
+
+
+filterNothings : List (Maybe a) -> List a
+filterNothings list =
+    List.filterMap identity list

@@ -4,7 +4,6 @@ import Svg exposing (..)
 import Svg.Attributes exposing (..)
 import Html exposing (..)
 import Types exposing (..)
-import States exposing (..)
 import Config exposing (..)
 
 
@@ -34,6 +33,7 @@ createWorldObjects world =
     createCircles world
         |> (\e -> List.append e (createPlayers world.players world))
         |> (\e -> List.append e (createSideLines world))
+        |> (\e -> List.append e (renderScores world))
 
 
 createCircles : World -> List (Svg.Svg msg)
@@ -46,9 +46,47 @@ createCircle sphere =
     circle [ cx (toString sphere.position.x), cy (toString sphere.position.y), r (toString sphere.diameter), fill "url(#grad1)" ] [ sphereGradientColour ]
 
 
+renderScores : World -> List (Svg.Svg msg)
+renderScores world =
+    List.map (\e -> renderScore world e) world.players
+
+
+renderScore : World -> Player -> Svg.Svg msg
+renderScore world player =
+    rect
+        [ x (outerBorderX player.side world |> toString)
+        , y (outerBorderY player.side world |> toString)
+        , width (sideOffset |> toString )
+        , height (toString player.score)
+        , fill (playerColor player.side)
+        , fillOpacity "0.4"
+        ]
+        []
+
+
+outerBorderX : Side -> World -> Float
+outerBorderX side world =
+    case side of
+        Left ->
+            world.outerBoundary.x1
+
+        Right ->
+            world.outerBoundary.x2
+
+
+outerBorderY : Side -> World -> Float
+outerBorderY side world =
+    case side of
+        Left ->
+            world.outerBoundary.y2
+
+        Right ->
+            world.outerBoundary.y2
+
+
 createSideLines : World -> List (Svg.Svg msg)
 createSideLines world =
-    [ createSideLine world.leftSideLine, createSideLine world.leftSideLine ]
+    [ createSideLine world.leftSideLine, createSideLine world.rightSideLine ]
 
 
 createSideLine : SideLine -> Svg.Svg msg
@@ -60,7 +98,7 @@ createSideLine sideline =
         , y2 <| (toString sideline.y2)
         , stroke (playerColor sideline.side)
         , strokeWidth "1"
-        , strokeOpacity "0.1"
+        , strokeOpacity "0.4"
         ]
         []
 
@@ -86,7 +124,7 @@ createPlayer player sideLine world =
         [ x ((playerSideLinePosistion player.side playerWidth) |> toString)
         , y (player.position.y |> toString)
         , width (toString playerWidth)
-        , height ((toString playerHeightPercent) ++ "%")
+        , height ((toString player.size))
         , fill (playerColor player.side)
         , fillOpacity "0.5"
         , stroke (playerColor player.side)
