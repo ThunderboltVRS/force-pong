@@ -14,15 +14,15 @@ view model =
 
 
 graphicContainer : World -> Svg.Svg msg
-graphicContainer model =
+graphicContainer world =
     rect
-        [ x (toString containerOffset)
-        , y (toString containerOffset)
-        , width (graphicWidth |> (\a -> a - containerOffset * 2 - containerBorder * 2) |> toString)
-        , height (graphicHeight |> (\a -> a - containerOffset * 2 - containerBorder * 2) |> toString)
+        [ x (toString world.outerContainer.x1)
+        , y (toString world.outerContainer.y1)
+        , width ((world.outerContainer.x2 - world.outerContainer.x1) |> toString)
+        , height ((world.outerContainer.y2 - world.outerContainer.y1) |> toString)
         , fill "none"
         , stroke "blue"
-        , strokeWidth (toString containerBorder)
+        , strokeWidth ((toString containerBorder) ++ "px")
         , strokeOpacity "0.2"
         ]
         []
@@ -55,33 +55,37 @@ renderScore : World -> Player -> Svg.Svg msg
 renderScore world player =
     rect
         [ x (outerBorderX player.side world |> toString)
-        , y (outerBorderY player.side world |> toString)
-        , width (sideOffset |> toString )
+        , y (outerBorderY player.side player.score world |> toString)
+        , width (scoreWidth world |> toString)
         , height (toString player.score)
         , fill (playerColor player.side)
-        , fillOpacity "0.4"
+        , fillOpacity "0.1"
         ]
         []
-
 
 outerBorderX : Side -> World -> Float
 outerBorderX side world =
     case side of
         Left ->
-            world.outerBoundary.x1
+            world.outerContainer.x1 + (containerBorder / 2)
 
         Right ->
-            world.outerBoundary.x2
+            world.outerContainer.x2 - (containerBorder / 2) -  scoreWidth world
 
 
-outerBorderY : Side -> World -> Float
-outerBorderY side world =
+scoreWidth : World -> Float
+scoreWidth world =
+    ((world.leftSideLine.x1) - (outerBorderX Left world))
+
+
+outerBorderY : Side -> Float -> World -> Float
+outerBorderY side height world =
     case side of
         Left ->
-            world.outerBoundary.y2
+            world.outerContainer.y2 - (containerBorder / 2) - height
 
         Right ->
-            world.outerBoundary.y2
+            world.outerContainer.y2 - (containerBorder / 2) - height
 
 
 createSideLines : World -> List (Svg.Svg msg)
@@ -98,7 +102,7 @@ createSideLine sideline =
         , y2 <| (toString sideline.y2)
         , stroke (playerColor sideline.side)
         , strokeWidth "1"
-        , strokeOpacity "0.4"
+        , strokeOpacity "0.6"
         ]
         []
 
@@ -121,7 +125,7 @@ getSideLine side world =
 createPlayer : Player -> SideLine -> World -> Svg.Svg msg
 createPlayer player sideLine world =
     rect
-        [ x ((playerSideLinePosistion player.side playerWidth) |> toString)
+        [ x (player.position.x |> toString)
         , y (player.position.y |> toString)
         , width (toString playerWidth)
         , height ((toString player.size))
@@ -149,14 +153,7 @@ outerSphereColour =
     Svg.stop [ offset "100%", stopColor "#0B79CE", stopOpacity "1" ] []
 
 
-playerSideLinePosistion : Side -> Float -> Float
-playerSideLinePosistion side width =
-    case side of
-        Left ->
-            (sideLinePosistion side) - width
 
-        Right ->
-            sideLinePosistion side
 
 
 playerColor : Side -> String

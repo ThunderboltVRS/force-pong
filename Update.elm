@@ -12,7 +12,7 @@ update : Msg -> World -> ( World, Cmd Msg )
 update msg world =
     case msg of
         Tick dt ->
-            ( applyScoring(applyPhysics dt world), Cmd.none )
+            ( applyScoring (applyPhysics dt world), Cmd.none )
 
         Click position ->
             -- ( addNewSphere position world |> limitSpheres, Cmd.none )
@@ -157,7 +157,9 @@ createSphere position initialMass velocity =
         , velocity = velocity
         , aliveFrames = 0
         , scale = scale
+        , merged = False
         }
+
 
 applyScoring : World -> World
 applyScoring world =
@@ -171,7 +173,7 @@ applyPhysics : Float -> World -> World
 applyPhysics dt world =
     { world
         | spheres =
-            applyForces world.physicsSettings.gravitationalConstant dt world.spheres
+            applyForces world.physicsSettings dt world.spheres
                 |> applyBoundaryCollisions world
                 |> updateSpherePositions
                 |> applySphereCollisions
@@ -179,7 +181,7 @@ applyPhysics dt world =
                 |> incrementLifetime
         , players =
             applyPlayerForces dt world.players
-                |> updatePlayerPositions
+                |> updatePlayerPositions world
     }
 
 
@@ -197,9 +199,9 @@ incrementLifetime spheres =
     List.map (\e -> { e | aliveFrames = e.aliveFrames + 1 }) spheres
 
 
-applyForces : Constant -> Float -> List (Sphere) -> List (Sphere)
-applyForces gravConst dt spheres =
-    List.map (\e -> applyGravitationForAll gravConst dt e spheres) spheres
+applyForces : PhysicsSettings -> Float -> List (Sphere) -> List (Sphere)
+applyForces settings dt spheres =
+    List.map (\e -> applyGravitationForAll settings dt e spheres) spheres
 
 
 applyPlayerForces : Float -> List (Player) -> List (Player)
@@ -290,9 +292,10 @@ collidedWithPaddle world sphere player =
                 Right ->
                     ((sphere.position.x - sphereRadius sphere) > world.rightSideLine.x1)
 
+
 applyBoundaryCollisions : World -> List (Sphere) -> List (Sphere)
 applyBoundaryCollisions world spheres =
-    List.map (\e -> applyVerticalBoundaryCollisions(applyHorizontalBoundaryCollisions e world) world) spheres
+    List.map (\e -> applyVerticalBoundaryCollisions (applyHorizontalBoundaryCollisions e world) world) spheres
 
 
 applyHorizontalBoundaryCollisions : Sphere -> World -> Sphere
@@ -303,6 +306,7 @@ applyHorizontalBoundaryCollisions sphere world =
         { sphere | velocity = { x = sphere.velocity.x, y = makeNegative sphere.velocity.y } }
     else
         sphere
+
 
 applyVerticalBoundaryCollisions : Sphere -> World -> Sphere
 applyVerticalBoundaryCollisions sphere world =
@@ -324,14 +328,42 @@ makeNegative x =
     abs x |> negate
 
 
-updatePlayerPositions : List (Player) -> List (Player)
-updatePlayerPositions players =
-    List.map (\e -> updatePlayerPosistion e) players
+updatePlayerPositions : World -> List (Player) -> List (Player)
+updatePlayerPositions world players =
+    List.map (\e -> limitPlayerBoundary world e) players
+        |> List.map (\e -> updatePlayerPosistion e)
+
+
+limitPlayerBoundary : World -> Player -> Player
+limitPlayerBoundary world player =
+    if playerOutOfBounds world player then
+        { player
+            | velocity = { x = 0, y = 0 }
+            , position =
+                { x = player.position.x
+                , y =
+                    if player.position.y > world.innerContainer.y2 - player.size then
+                        world.innerContainer.y2 - player.size
+                    else
+                        world.innerContainer.y1
+                }
+        }
+    else
+        player
+
+
+playerOutOfBounds : World -> Player -> Bool
+playerOutOfBounds world player =
+    player.position.y
+        < world.innerContainer.y1
+        || (player.position.y + player.size)
+        > world.innerContainer.y2
 
 
 applySphereCollisions : List (Sphere) -> List (Sphere)
 applySphereCollisions spheres =
-    filterNothings (List.map mergeSpheres (groupByCollisions spheres))
+    List.map (\e -> mergeSpheres e (List.filter (\e1 -> e1 /= e) spheres)) spheres
+        |> removeMergedSpheres
 
 
 mergeSphere : Sphere -> Sphere -> Sphere
@@ -405,9 +437,9 @@ filterSpheres sphere spheres =
     List.filter (\e1 -> e1 /= sphere) spheres
 
 
-applyGravitationForAll : Constant -> Float -> Sphere -> List (Sphere) -> Sphere
-applyGravitationForAll gravConst dt sphereA spheres =
-    applyForcesToObject sphereA (List.map (\s -> calculateGravitation gravConst dt sphereA s) (List.filter (\s -> s /= sphereA) spheres))
+applyGravitationForAll : PhysicsSettings -> Float -> Sphere -> List (Sphere) -> Sphere
+applyGravitationForAll settings dt sphereA spheres =
+    applyForcesToObject settings sphereA (List.map (\s -> calculateGravitation settings.gravitationalConstant dt sphereA s) (List.filter (\s -> s /= sphereA) spheres))
 
 
 calculateGravitation : Constant -> Float -> Sphere -> Sphere -> Force
@@ -444,15 +476,23 @@ euclideanDistance positionA positionB =
     Basics.sqrt ((square (positionB.x - positionA.x)) + (square (positionB.y - positionA.y)))
 
 
-applyForcesToObject : Sphere -> List (Force) -> Sphere
-applyForcesToObject sphere forces =
-    { sphere | velocity = updateVelocityForForces sphere.velocity sphere.mass.size forces }
+applyForcesToObject : PhysicsSettings -> Sphere -> List (Force) -> Sphere
+applyForcesToObject settings sphere forces =
+    { sphere | velocity = updateVelocityForForces settings sphere.velocity sphere.mass.size forces }
 
 
-updateVelocityForForces : Velocity -> Float -> List (Force) -> Velocity
-updateVelocityForForces velocity mass forces =
+updateVelocityForForces : PhysicsSettings -> Velocity -> Float -> List (Force) -> Velocity
+updateVelocityForForces settings velocity mass forces =
     -- F= ma
-    { velocity | x = velocity.x + (sumX (forces) / mass), y = velocity.y + (sumY (forces) / mass) }
+    { velocity
+        | x = (velocity.x + (sumX (forces) / mass))
+        , y = (velocity.y + (sumY (forces) / mass))
+    }
+
+
+limitSphereVelocity : PhysicsSettings -> Float -> Float
+limitSphereVelocity settings velocity =
+    clamp (negate settings.maxSphereVelocity) settings.maxSphereVelocity velocity
 
 
 sumX : List (Force) -> Float
@@ -480,7 +520,7 @@ calculateDiameter scale mass =
 
 hasCollided : Sphere -> Sphere -> Bool
 hasCollided sphereA sphereB =
-    euclideanDistance sphereA.position sphereB.position < ((sphereRadius sphereA) + (sphereRadius sphereB))
+    (<) (euclideanDistance sphereA.position sphereB.position) ((sphereRadius sphereA) + (sphereRadius sphereB))
 
 
 sphereRadius : Sphere -> Float
@@ -493,39 +533,80 @@ square n =
     n ^ 2
 
 
-mergeSpheres : List (Sphere) -> Maybe Sphere
-mergeSpheres spheres =
-    let
-        lastSphere =
-            (List.head (List.reverse spheres))
 
-        -- filter out the last sphere so we don't merge it with itself
-        filteredSpheres =
-            List.tail (List.reverse spheres)
-    in
-        if (List.length spheres == 1) then
-            lastSphere
-        else
-            case lastSphere of
-                Nothing ->
-                    Maybe.Nothing
-
-                Just l ->
-                    case filteredSpheres of
-                        -- only one sphere: return it
-                        Nothing ->
-                            Just l
-
-                        -- merge spheres
-                        Just f ->
-                            Just (List.foldr mergeSphere l f)
-
-
-groupByCollisions : List (Sphere) -> List (List (Sphere))
-groupByCollisions spheres =
-    List.Extra.groupWhile (\x y -> hasCollided x y) spheres
+-- Alternative to use group while, need a group by function  but none are available at this time (18/06/16)
+-- mergeSpheres : List (Sphere) -> Maybe Sphere
+-- mergeSpheres spheres =
+--     let
+--         lastSphere =
+--             (List.head (List.reverse spheres))
+--         -- filter out the last sphere so we don't merge it with itself
+--         filteredSpheres =
+--             List.tail (List.reverse spheres)
+--     in
+--         if (List.length spheres == 1) then
+--             lastSphere
+--         else
+--             case lastSphere of
+--                 Nothing ->
+--                     Maybe.Nothing
+--                 Just l ->
+--                     case filteredSpheres of
+--                         -- only one sphere: return it
+--                         Nothing ->
+--                             Just l
+--                         -- merge spheres
+--                         Just f ->
+--                             Just (List.foldr mergeSphere l f)
+-- groupByCollisions : List (Sphere) -> List (List (Sphere))
+-- groupByCollisions spheres =
+--     -- need to sort by vector -> that way groups will be correctly grouped, if the next item isn;t
+--     List.Extra.groupWhile (\x y -> hasCollided x y) (List.sortWith sortByVectorProduct spheres)
+-- sortByVectorProduct : Sphere -> Sphere -> Order
+-- sortByVectorProduct sphereA sphereB =
+--     compare (calculateVectorProduct sphereA.position) (calculateVectorProduct sphereB.position)
+-- calculateVectorProduct : Position -> Float
+-- calculateVectorProduct posistion =
+--     posistion.x * posistion.y
 
 
 filterNothings : List (Maybe a) -> List a
 filterNothings list =
     List.filterMap identity list
+
+
+groupFunction : (a -> b -> a) -> List a -> List a
+groupFunction func objects =
+    objects
+
+
+markAsMerged : Sphere -> Sphere
+markAsMerged sphere =
+    { sphere | merged = True }
+
+
+mergeSpheres : Sphere -> List (Sphere) -> Sphere
+mergeSpheres testSphere otherSpheres =
+    let
+        spheresCollided =
+            collidedSpheres testSphere otherSpheres
+    in
+        if List.isEmpty spheresCollided then
+            testSphere
+        else if
+            (List.any (\f -> f.mass.size > testSphere.mass.size) spheresCollided)
+                || (List.any (\f -> f.mass.size == testSphere.mass.size && f.aliveFrames > testSphere.aliveFrames) spheresCollided)
+        then
+            markAsMerged testSphere
+        else
+            List.foldl mergeSphere testSphere spheresCollided
+
+
+collidedSpheres : Sphere -> List (Sphere) -> List (Sphere)
+collidedSpheres sphere otherSpheres =
+    List.filter (\e -> euclideanDistance sphere.position e.position < (sphere.diameter + e.diameter)) otherSpheres
+
+
+removeMergedSpheres : List (Sphere) -> List (Sphere)
+removeMergedSpheres spheres =
+    List.filter (\e -> e.merged == False) spheres

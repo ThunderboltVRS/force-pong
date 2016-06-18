@@ -2511,6 +2511,1025 @@ var _elm_lang$core$Platform_Sub$none = _elm_lang$core$Platform_Sub$batch(
 		[]));
 var _elm_lang$core$Platform_Sub$map = _elm_lang$core$Native_Platform.map;
 var _elm_lang$core$Platform_Sub$Sub = {ctor: 'Sub'};
+//import Native.List //
+
+var _elm_lang$core$Native_Array = function() {
+
+// A RRB-Tree has two distinct data types.
+// Leaf -> "height"  is always 0
+//         "table"   is an array of elements
+// Node -> "height"  is always greater than 0
+//         "table"   is an array of child nodes
+//         "lengths" is an array of accumulated lengths of the child nodes
+
+// M is the maximal table size. 32 seems fast. E is the allowed increase
+// of search steps when concatting to find an index. Lower values will
+// decrease balancing, but will increase search steps.
+var M = 32;
+var E = 2;
+
+// An empty array.
+var empty = {
+	ctor: '_Array',
+	height: 0,
+	table: []
+};
+
+
+function get(i, array)
+{
+	if (i < 0 || i >= length(array))
+	{
+		throw new Error(
+			'Index ' + i + ' is out of range. Check the length of ' +
+			'your array first or use getMaybe or getWithDefault.');
+	}
+	return unsafeGet(i, array);
+}
+
+
+function unsafeGet(i, array)
+{
+	for (var x = array.height; x > 0; x--)
+	{
+		var slot = i >> (x * 5);
+		while (array.lengths[slot] <= i)
+		{
+			slot++;
+		}
+		if (slot > 0)
+		{
+			i -= array.lengths[slot - 1];
+		}
+		array = array.table[slot];
+	}
+	return array.table[i];
+}
+
+
+// Sets the value at the index i. Only the nodes leading to i will get
+// copied and updated.
+function set(i, item, array)
+{
+	if (i < 0 || length(array) <= i)
+	{
+		return array;
+	}
+	return unsafeSet(i, item, array);
+}
+
+
+function unsafeSet(i, item, array)
+{
+	array = nodeCopy(array);
+
+	if (array.height === 0)
+	{
+		array.table[i] = item;
+	}
+	else
+	{
+		var slot = getSlot(i, array);
+		if (slot > 0)
+		{
+			i -= array.lengths[slot - 1];
+		}
+		array.table[slot] = unsafeSet(i, item, array.table[slot]);
+	}
+	return array;
+}
+
+
+function initialize(len, f)
+{
+	if (len <= 0)
+	{
+		return empty;
+	}
+	var h = Math.floor( Math.log(len) / Math.log(M) );
+	return initialize_(f, h, 0, len);
+}
+
+function initialize_(f, h, from, to)
+{
+	if (h === 0)
+	{
+		var table = new Array((to - from) % (M + 1));
+		for (var i = 0; i < table.length; i++)
+		{
+		  table[i] = f(from + i);
+		}
+		return {
+			ctor: '_Array',
+			height: 0,
+			table: table
+		};
+	}
+
+	var step = Math.pow(M, h);
+	var table = new Array(Math.ceil((to - from) / step));
+	var lengths = new Array(table.length);
+	for (var i = 0; i < table.length; i++)
+	{
+		table[i] = initialize_(f, h - 1, from + (i * step), Math.min(from + ((i + 1) * step), to));
+		lengths[i] = length(table[i]) + (i > 0 ? lengths[i-1] : 0);
+	}
+	return {
+		ctor: '_Array',
+		height: h,
+		table: table,
+		lengths: lengths
+	};
+}
+
+function fromList(list)
+{
+	if (list.ctor === '[]')
+	{
+		return empty;
+	}
+
+	// Allocate M sized blocks (table) and write list elements to it.
+	var table = new Array(M);
+	var nodes = [];
+	var i = 0;
+
+	while (list.ctor !== '[]')
+	{
+		table[i] = list._0;
+		list = list._1;
+		i++;
+
+		// table is full, so we can push a leaf containing it into the
+		// next node.
+		if (i === M)
+		{
+			var leaf = {
+				ctor: '_Array',
+				height: 0,
+				table: table
+			};
+			fromListPush(leaf, nodes);
+			table = new Array(M);
+			i = 0;
+		}
+	}
+
+	// Maybe there is something left on the table.
+	if (i > 0)
+	{
+		var leaf = {
+			ctor: '_Array',
+			height: 0,
+			table: table.splice(0, i)
+		};
+		fromListPush(leaf, nodes);
+	}
+
+	// Go through all of the nodes and eventually push them into higher nodes.
+	for (var h = 0; h < nodes.length - 1; h++)
+	{
+		if (nodes[h].table.length > 0)
+		{
+			fromListPush(nodes[h], nodes);
+		}
+	}
+
+	var head = nodes[nodes.length - 1];
+	if (head.height > 0 && head.table.length === 1)
+	{
+		return head.table[0];
+	}
+	else
+	{
+		return head;
+	}
+}
+
+// Push a node into a higher node as a child.
+function fromListPush(toPush, nodes)
+{
+	var h = toPush.height;
+
+	// Maybe the node on this height does not exist.
+	if (nodes.length === h)
+	{
+		var node = {
+			ctor: '_Array',
+			height: h + 1,
+			table: [],
+			lengths: []
+		};
+		nodes.push(node);
+	}
+
+	nodes[h].table.push(toPush);
+	var len = length(toPush);
+	if (nodes[h].lengths.length > 0)
+	{
+		len += nodes[h].lengths[nodes[h].lengths.length - 1];
+	}
+	nodes[h].lengths.push(len);
+
+	if (nodes[h].table.length === M)
+	{
+		fromListPush(nodes[h], nodes);
+		nodes[h] = {
+			ctor: '_Array',
+			height: h + 1,
+			table: [],
+			lengths: []
+		};
+	}
+}
+
+// Pushes an item via push_ to the bottom right of a tree.
+function push(item, a)
+{
+	var pushed = push_(item, a);
+	if (pushed !== null)
+	{
+		return pushed;
+	}
+
+	var newTree = create(item, a.height);
+	return siblise(a, newTree);
+}
+
+// Recursively tries to push an item to the bottom-right most
+// tree possible. If there is no space left for the item,
+// null will be returned.
+function push_(item, a)
+{
+	// Handle resursion stop at leaf level.
+	if (a.height === 0)
+	{
+		if (a.table.length < M)
+		{
+			var newA = {
+				ctor: '_Array',
+				height: 0,
+				table: a.table.slice()
+			};
+			newA.table.push(item);
+			return newA;
+		}
+		else
+		{
+		  return null;
+		}
+	}
+
+	// Recursively push
+	var pushed = push_(item, botRight(a));
+
+	// There was space in the bottom right tree, so the slot will
+	// be updated.
+	if (pushed !== null)
+	{
+		var newA = nodeCopy(a);
+		newA.table[newA.table.length - 1] = pushed;
+		newA.lengths[newA.lengths.length - 1]++;
+		return newA;
+	}
+
+	// When there was no space left, check if there is space left
+	// for a new slot with a tree which contains only the item
+	// at the bottom.
+	if (a.table.length < M)
+	{
+		var newSlot = create(item, a.height - 1);
+		var newA = nodeCopy(a);
+		newA.table.push(newSlot);
+		newA.lengths.push(newA.lengths[newA.lengths.length - 1] + length(newSlot));
+		return newA;
+	}
+	else
+	{
+		return null;
+	}
+}
+
+// Converts an array into a list of elements.
+function toList(a)
+{
+	return toList_(_elm_lang$core$Native_List.Nil, a);
+}
+
+function toList_(list, a)
+{
+	for (var i = a.table.length - 1; i >= 0; i--)
+	{
+		list =
+			a.height === 0
+				? _elm_lang$core$Native_List.Cons(a.table[i], list)
+				: toList_(list, a.table[i]);
+	}
+	return list;
+}
+
+// Maps a function over the elements of an array.
+function map(f, a)
+{
+	var newA = {
+		ctor: '_Array',
+		height: a.height,
+		table: new Array(a.table.length)
+	};
+	if (a.height > 0)
+	{
+		newA.lengths = a.lengths;
+	}
+	for (var i = 0; i < a.table.length; i++)
+	{
+		newA.table[i] =
+			a.height === 0
+				? f(a.table[i])
+				: map(f, a.table[i]);
+	}
+	return newA;
+}
+
+// Maps a function over the elements with their index as first argument.
+function indexedMap(f, a)
+{
+	return indexedMap_(f, a, 0);
+}
+
+function indexedMap_(f, a, from)
+{
+	var newA = {
+		ctor: '_Array',
+		height: a.height,
+		table: new Array(a.table.length)
+	};
+	if (a.height > 0)
+	{
+		newA.lengths = a.lengths;
+	}
+	for (var i = 0; i < a.table.length; i++)
+	{
+		newA.table[i] =
+			a.height === 0
+				? A2(f, from + i, a.table[i])
+				: indexedMap_(f, a.table[i], i == 0 ? from : from + a.lengths[i - 1]);
+	}
+	return newA;
+}
+
+function foldl(f, b, a)
+{
+	if (a.height === 0)
+	{
+		for (var i = 0; i < a.table.length; i++)
+		{
+			b = A2(f, a.table[i], b);
+		}
+	}
+	else
+	{
+		for (var i = 0; i < a.table.length; i++)
+		{
+			b = foldl(f, b, a.table[i]);
+		}
+	}
+	return b;
+}
+
+function foldr(f, b, a)
+{
+	if (a.height === 0)
+	{
+		for (var i = a.table.length; i--; )
+		{
+			b = A2(f, a.table[i], b);
+		}
+	}
+	else
+	{
+		for (var i = a.table.length; i--; )
+		{
+			b = foldr(f, b, a.table[i]);
+		}
+	}
+	return b;
+}
+
+// TODO: currently, it slices the right, then the left. This can be
+// optimized.
+function slice(from, to, a)
+{
+	if (from < 0)
+	{
+		from += length(a);
+	}
+	if (to < 0)
+	{
+		to += length(a);
+	}
+	return sliceLeft(from, sliceRight(to, a));
+}
+
+function sliceRight(to, a)
+{
+	if (to === length(a))
+	{
+		return a;
+	}
+
+	// Handle leaf level.
+	if (a.height === 0)
+	{
+		var newA = { ctor:'_Array', height:0 };
+		newA.table = a.table.slice(0, to);
+		return newA;
+	}
+
+	// Slice the right recursively.
+	var right = getSlot(to, a);
+	var sliced = sliceRight(to - (right > 0 ? a.lengths[right - 1] : 0), a.table[right]);
+
+	// Maybe the a node is not even needed, as sliced contains the whole slice.
+	if (right === 0)
+	{
+		return sliced;
+	}
+
+	// Create new node.
+	var newA = {
+		ctor: '_Array',
+		height: a.height,
+		table: a.table.slice(0, right),
+		lengths: a.lengths.slice(0, right)
+	};
+	if (sliced.table.length > 0)
+	{
+		newA.table[right] = sliced;
+		newA.lengths[right] = length(sliced) + (right > 0 ? newA.lengths[right - 1] : 0);
+	}
+	return newA;
+}
+
+function sliceLeft(from, a)
+{
+	if (from === 0)
+	{
+		return a;
+	}
+
+	// Handle leaf level.
+	if (a.height === 0)
+	{
+		var newA = { ctor:'_Array', height:0 };
+		newA.table = a.table.slice(from, a.table.length + 1);
+		return newA;
+	}
+
+	// Slice the left recursively.
+	var left = getSlot(from, a);
+	var sliced = sliceLeft(from - (left > 0 ? a.lengths[left - 1] : 0), a.table[left]);
+
+	// Maybe the a node is not even needed, as sliced contains the whole slice.
+	if (left === a.table.length - 1)
+	{
+		return sliced;
+	}
+
+	// Create new node.
+	var newA = {
+		ctor: '_Array',
+		height: a.height,
+		table: a.table.slice(left, a.table.length + 1),
+		lengths: new Array(a.table.length - left)
+	};
+	newA.table[0] = sliced;
+	var len = 0;
+	for (var i = 0; i < newA.table.length; i++)
+	{
+		len += length(newA.table[i]);
+		newA.lengths[i] = len;
+	}
+
+	return newA;
+}
+
+// Appends two trees.
+function append(a,b)
+{
+	if (a.table.length === 0)
+	{
+		return b;
+	}
+	if (b.table.length === 0)
+	{
+		return a;
+	}
+
+	var c = append_(a, b);
+
+	// Check if both nodes can be crunshed together.
+	if (c[0].table.length + c[1].table.length <= M)
+	{
+		if (c[0].table.length === 0)
+		{
+			return c[1];
+		}
+		if (c[1].table.length === 0)
+		{
+			return c[0];
+		}
+
+		// Adjust .table and .lengths
+		c[0].table = c[0].table.concat(c[1].table);
+		if (c[0].height > 0)
+		{
+			var len = length(c[0]);
+			for (var i = 0; i < c[1].lengths.length; i++)
+			{
+				c[1].lengths[i] += len;
+			}
+			c[0].lengths = c[0].lengths.concat(c[1].lengths);
+		}
+
+		return c[0];
+	}
+
+	if (c[0].height > 0)
+	{
+		var toRemove = calcToRemove(a, b);
+		if (toRemove > E)
+		{
+			c = shuffle(c[0], c[1], toRemove);
+		}
+	}
+
+	return siblise(c[0], c[1]);
+}
+
+// Returns an array of two nodes; right and left. One node _may_ be empty.
+function append_(a, b)
+{
+	if (a.height === 0 && b.height === 0)
+	{
+		return [a, b];
+	}
+
+	if (a.height !== 1 || b.height !== 1)
+	{
+		if (a.height === b.height)
+		{
+			a = nodeCopy(a);
+			b = nodeCopy(b);
+			var appended = append_(botRight(a), botLeft(b));
+
+			insertRight(a, appended[1]);
+			insertLeft(b, appended[0]);
+		}
+		else if (a.height > b.height)
+		{
+			a = nodeCopy(a);
+			var appended = append_(botRight(a), b);
+
+			insertRight(a, appended[0]);
+			b = parentise(appended[1], appended[1].height + 1);
+		}
+		else
+		{
+			b = nodeCopy(b);
+			var appended = append_(a, botLeft(b));
+
+			var left = appended[0].table.length === 0 ? 0 : 1;
+			var right = left === 0 ? 1 : 0;
+			insertLeft(b, appended[left]);
+			a = parentise(appended[right], appended[right].height + 1);
+		}
+	}
+
+	// Check if balancing is needed and return based on that.
+	if (a.table.length === 0 || b.table.length === 0)
+	{
+		return [a, b];
+	}
+
+	var toRemove = calcToRemove(a, b);
+	if (toRemove <= E)
+	{
+		return [a, b];
+	}
+	return shuffle(a, b, toRemove);
+}
+
+// Helperfunctions for append_. Replaces a child node at the side of the parent.
+function insertRight(parent, node)
+{
+	var index = parent.table.length - 1;
+	parent.table[index] = node;
+	parent.lengths[index] = length(node);
+	parent.lengths[index] += index > 0 ? parent.lengths[index - 1] : 0;
+}
+
+function insertLeft(parent, node)
+{
+	if (node.table.length > 0)
+	{
+		parent.table[0] = node;
+		parent.lengths[0] = length(node);
+
+		var len = length(parent.table[0]);
+		for (var i = 1; i < parent.lengths.length; i++)
+		{
+			len += length(parent.table[i]);
+			parent.lengths[i] = len;
+		}
+	}
+	else
+	{
+		parent.table.shift();
+		for (var i = 1; i < parent.lengths.length; i++)
+		{
+			parent.lengths[i] = parent.lengths[i] - parent.lengths[0];
+		}
+		parent.lengths.shift();
+	}
+}
+
+// Returns the extra search steps for E. Refer to the paper.
+function calcToRemove(a, b)
+{
+	var subLengths = 0;
+	for (var i = 0; i < a.table.length; i++)
+	{
+		subLengths += a.table[i].table.length;
+	}
+	for (var i = 0; i < b.table.length; i++)
+	{
+		subLengths += b.table[i].table.length;
+	}
+
+	var toRemove = a.table.length + b.table.length;
+	return toRemove - (Math.floor((subLengths - 1) / M) + 1);
+}
+
+// get2, set2 and saveSlot are helpers for accessing elements over two arrays.
+function get2(a, b, index)
+{
+	return index < a.length
+		? a[index]
+		: b[index - a.length];
+}
+
+function set2(a, b, index, value)
+{
+	if (index < a.length)
+	{
+		a[index] = value;
+	}
+	else
+	{
+		b[index - a.length] = value;
+	}
+}
+
+function saveSlot(a, b, index, slot)
+{
+	set2(a.table, b.table, index, slot);
+
+	var l = (index === 0 || index === a.lengths.length)
+		? 0
+		: get2(a.lengths, a.lengths, index - 1);
+
+	set2(a.lengths, b.lengths, index, l + length(slot));
+}
+
+// Creates a node or leaf with a given length at their arrays for perfomance.
+// Is only used by shuffle.
+function createNode(h, length)
+{
+	if (length < 0)
+	{
+		length = 0;
+	}
+	var a = {
+		ctor: '_Array',
+		height: h,
+		table: new Array(length)
+	};
+	if (h > 0)
+	{
+		a.lengths = new Array(length);
+	}
+	return a;
+}
+
+// Returns an array of two balanced nodes.
+function shuffle(a, b, toRemove)
+{
+	var newA = createNode(a.height, Math.min(M, a.table.length + b.table.length - toRemove));
+	var newB = createNode(a.height, newA.table.length - (a.table.length + b.table.length - toRemove));
+
+	// Skip the slots with size M. More precise: copy the slot references
+	// to the new node
+	var read = 0;
+	while (get2(a.table, b.table, read).table.length % M === 0)
+	{
+		set2(newA.table, newB.table, read, get2(a.table, b.table, read));
+		set2(newA.lengths, newB.lengths, read, get2(a.lengths, b.lengths, read));
+		read++;
+	}
+
+	// Pulling items from left to right, caching in a slot before writing
+	// it into the new nodes.
+	var write = read;
+	var slot = new createNode(a.height - 1, 0);
+	var from = 0;
+
+	// If the current slot is still containing data, then there will be at
+	// least one more write, so we do not break this loop yet.
+	while (read - write - (slot.table.length > 0 ? 1 : 0) < toRemove)
+	{
+		// Find out the max possible items for copying.
+		var source = get2(a.table, b.table, read);
+		var to = Math.min(M - slot.table.length, source.table.length);
+
+		// Copy and adjust size table.
+		slot.table = slot.table.concat(source.table.slice(from, to));
+		if (slot.height > 0)
+		{
+			var len = slot.lengths.length;
+			for (var i = len; i < len + to - from; i++)
+			{
+				slot.lengths[i] = length(slot.table[i]);
+				slot.lengths[i] += (i > 0 ? slot.lengths[i - 1] : 0);
+			}
+		}
+
+		from += to;
+
+		// Only proceed to next slots[i] if the current one was
+		// fully copied.
+		if (source.table.length <= to)
+		{
+			read++; from = 0;
+		}
+
+		// Only create a new slot if the current one is filled up.
+		if (slot.table.length === M)
+		{
+			saveSlot(newA, newB, write, slot);
+			slot = createNode(a.height - 1, 0);
+			write++;
+		}
+	}
+
+	// Cleanup after the loop. Copy the last slot into the new nodes.
+	if (slot.table.length > 0)
+	{
+		saveSlot(newA, newB, write, slot);
+		write++;
+	}
+
+	// Shift the untouched slots to the left
+	while (read < a.table.length + b.table.length )
+	{
+		saveSlot(newA, newB, write, get2(a.table, b.table, read));
+		read++;
+		write++;
+	}
+
+	return [newA, newB];
+}
+
+// Navigation functions
+function botRight(a)
+{
+	return a.table[a.table.length - 1];
+}
+function botLeft(a)
+{
+	return a.table[0];
+}
+
+// Copies a node for updating. Note that you should not use this if
+// only updating only one of "table" or "lengths" for performance reasons.
+function nodeCopy(a)
+{
+	var newA = {
+		ctor: '_Array',
+		height: a.height,
+		table: a.table.slice()
+	};
+	if (a.height > 0)
+	{
+		newA.lengths = a.lengths.slice();
+	}
+	return newA;
+}
+
+// Returns how many items are in the tree.
+function length(array)
+{
+	if (array.height === 0)
+	{
+		return array.table.length;
+	}
+	else
+	{
+		return array.lengths[array.lengths.length - 1];
+	}
+}
+
+// Calculates in which slot of "table" the item probably is, then
+// find the exact slot via forward searching in  "lengths". Returns the index.
+function getSlot(i, a)
+{
+	var slot = i >> (5 * a.height);
+	while (a.lengths[slot] <= i)
+	{
+		slot++;
+	}
+	return slot;
+}
+
+// Recursively creates a tree with a given height containing
+// only the given item.
+function create(item, h)
+{
+	if (h === 0)
+	{
+		return {
+			ctor: '_Array',
+			height: 0,
+			table: [item]
+		};
+	}
+	return {
+		ctor: '_Array',
+		height: h,
+		table: [create(item, h - 1)],
+		lengths: [1]
+	};
+}
+
+// Recursively creates a tree that contains the given tree.
+function parentise(tree, h)
+{
+	if (h === tree.height)
+	{
+		return tree;
+	}
+
+	return {
+		ctor: '_Array',
+		height: h,
+		table: [parentise(tree, h - 1)],
+		lengths: [length(tree)]
+	};
+}
+
+// Emphasizes blood brotherhood beneath two trees.
+function siblise(a, b)
+{
+	return {
+		ctor: '_Array',
+		height: a.height + 1,
+		table: [a, b],
+		lengths: [length(a), length(a) + length(b)]
+	};
+}
+
+function toJSArray(a)
+{
+	var jsArray = new Array(length(a));
+	toJSArray_(jsArray, 0, a);
+	return jsArray;
+}
+
+function toJSArray_(jsArray, i, a)
+{
+	for (var t = 0; t < a.table.length; t++)
+	{
+		if (a.height === 0)
+		{
+			jsArray[i + t] = a.table[t];
+		}
+		else
+		{
+			var inc = t === 0 ? 0 : a.lengths[t - 1];
+			toJSArray_(jsArray, i + inc, a.table[t]);
+		}
+	}
+}
+
+function fromJSArray(jsArray)
+{
+	if (jsArray.length === 0)
+	{
+		return empty;
+	}
+	var h = Math.floor(Math.log(jsArray.length) / Math.log(M));
+	return fromJSArray_(jsArray, h, 0, jsArray.length);
+}
+
+function fromJSArray_(jsArray, h, from, to)
+{
+	if (h === 0)
+	{
+		return {
+			ctor: '_Array',
+			height: 0,
+			table: jsArray.slice(from, to)
+		};
+	}
+
+	var step = Math.pow(M, h);
+	var table = new Array(Math.ceil((to - from) / step));
+	var lengths = new Array(table.length);
+	for (var i = 0; i < table.length; i++)
+	{
+		table[i] = fromJSArray_(jsArray, h - 1, from + (i * step), Math.min(from + ((i + 1) * step), to));
+		lengths[i] = length(table[i]) + (i > 0 ? lengths[i - 1] : 0);
+	}
+	return {
+		ctor: '_Array',
+		height: h,
+		table: table,
+		lengths: lengths
+	};
+}
+
+return {
+	empty: empty,
+	fromList: fromList,
+	toList: toList,
+	initialize: F2(initialize),
+	append: F2(append),
+	push: F2(push),
+	slice: F3(slice),
+	get: F2(get),
+	set: F3(set),
+	map: F2(map),
+	indexedMap: F2(indexedMap),
+	foldl: F3(foldl),
+	foldr: F3(foldr),
+	length: length,
+
+	toJSArray: toJSArray,
+	fromJSArray: fromJSArray
+};
+
+}();var _elm_lang$core$Array$append = _elm_lang$core$Native_Array.append;
+var _elm_lang$core$Array$length = _elm_lang$core$Native_Array.length;
+var _elm_lang$core$Array$isEmpty = function (array) {
+	return _elm_lang$core$Native_Utils.eq(
+		_elm_lang$core$Array$length(array),
+		0);
+};
+var _elm_lang$core$Array$slice = _elm_lang$core$Native_Array.slice;
+var _elm_lang$core$Array$set = _elm_lang$core$Native_Array.set;
+var _elm_lang$core$Array$get = F2(
+	function (i, array) {
+		return ((_elm_lang$core$Native_Utils.cmp(0, i) < 1) && (_elm_lang$core$Native_Utils.cmp(
+			i,
+			_elm_lang$core$Native_Array.length(array)) < 0)) ? _elm_lang$core$Maybe$Just(
+			A2(_elm_lang$core$Native_Array.get, i, array)) : _elm_lang$core$Maybe$Nothing;
+	});
+var _elm_lang$core$Array$push = _elm_lang$core$Native_Array.push;
+var _elm_lang$core$Array$empty = _elm_lang$core$Native_Array.empty;
+var _elm_lang$core$Array$filter = F2(
+	function (isOkay, arr) {
+		var update = F2(
+			function (x, xs) {
+				return isOkay(x) ? A2(_elm_lang$core$Native_Array.push, x, xs) : xs;
+			});
+		return A3(_elm_lang$core$Native_Array.foldl, update, _elm_lang$core$Native_Array.empty, arr);
+	});
+var _elm_lang$core$Array$foldr = _elm_lang$core$Native_Array.foldr;
+var _elm_lang$core$Array$foldl = _elm_lang$core$Native_Array.foldl;
+var _elm_lang$core$Array$indexedMap = _elm_lang$core$Native_Array.indexedMap;
+var _elm_lang$core$Array$map = _elm_lang$core$Native_Array.map;
+var _elm_lang$core$Array$toIndexedList = function (array) {
+	return A3(
+		_elm_lang$core$List$map2,
+		F2(
+			function (v0, v1) {
+				return {ctor: '_Tuple2', _0: v0, _1: v1};
+			}),
+		_elm_lang$core$Native_List.range(
+			0,
+			_elm_lang$core$Native_Array.length(array) - 1),
+		_elm_lang$core$Native_Array.toList(array));
+};
+var _elm_lang$core$Array$toList = _elm_lang$core$Native_Array.toList;
+var _elm_lang$core$Array$fromList = _elm_lang$core$Native_Array.fromList;
+var _elm_lang$core$Array$initialize = _elm_lang$core$Native_Array.initialize;
+var _elm_lang$core$Array$repeat = F2(
+	function (n, e) {
+		return A2(
+			_elm_lang$core$Array$initialize,
+			n,
+			_elm_lang$core$Basics$always(e));
+	});
+var _elm_lang$core$Array$Array = {ctor: 'Array'};
 var _elm_lang$core$Task$onError = _elm_lang$core$Native_Scheduler.onError;
 var _elm_lang$core$Task$andThen = _elm_lang$core$Native_Scheduler.andThen;
 var _elm_lang$core$Task$spawnCmd = F2(
@@ -4257,1028 +5276,6 @@ var _elm_lang$core$Time$subMap = F2(
 			});
 	});
 _elm_lang$core$Native_Platform.effectManagers['Time'] = {pkg: 'elm-lang/core', init: _elm_lang$core$Time$init, onEffects: _elm_lang$core$Time$onEffects, onSelfMsg: _elm_lang$core$Time$onSelfMsg, tag: 'sub', subMap: _elm_lang$core$Time$subMap};
-var _elm_lang$core$Process$kill = _elm_lang$core$Native_Scheduler.kill;
-var _elm_lang$core$Process$sleep = _elm_lang$core$Native_Scheduler.sleep;
-var _elm_lang$core$Process$spawn = _elm_lang$core$Native_Scheduler.spawn;
-//import Native.List //
-
-var _elm_lang$core$Native_Array = function() {
-
-// A RRB-Tree has two distinct data types.
-// Leaf -> "height"  is always 0
-//         "table"   is an array of elements
-// Node -> "height"  is always greater than 0
-//         "table"   is an array of child nodes
-//         "lengths" is an array of accumulated lengths of the child nodes
-
-// M is the maximal table size. 32 seems fast. E is the allowed increase
-// of search steps when concatting to find an index. Lower values will
-// decrease balancing, but will increase search steps.
-var M = 32;
-var E = 2;
-
-// An empty array.
-var empty = {
-	ctor: '_Array',
-	height: 0,
-	table: []
-};
-
-
-function get(i, array)
-{
-	if (i < 0 || i >= length(array))
-	{
-		throw new Error(
-			'Index ' + i + ' is out of range. Check the length of ' +
-			'your array first or use getMaybe or getWithDefault.');
-	}
-	return unsafeGet(i, array);
-}
-
-
-function unsafeGet(i, array)
-{
-	for (var x = array.height; x > 0; x--)
-	{
-		var slot = i >> (x * 5);
-		while (array.lengths[slot] <= i)
-		{
-			slot++;
-		}
-		if (slot > 0)
-		{
-			i -= array.lengths[slot - 1];
-		}
-		array = array.table[slot];
-	}
-	return array.table[i];
-}
-
-
-// Sets the value at the index i. Only the nodes leading to i will get
-// copied and updated.
-function set(i, item, array)
-{
-	if (i < 0 || length(array) <= i)
-	{
-		return array;
-	}
-	return unsafeSet(i, item, array);
-}
-
-
-function unsafeSet(i, item, array)
-{
-	array = nodeCopy(array);
-
-	if (array.height === 0)
-	{
-		array.table[i] = item;
-	}
-	else
-	{
-		var slot = getSlot(i, array);
-		if (slot > 0)
-		{
-			i -= array.lengths[slot - 1];
-		}
-		array.table[slot] = unsafeSet(i, item, array.table[slot]);
-	}
-	return array;
-}
-
-
-function initialize(len, f)
-{
-	if (len <= 0)
-	{
-		return empty;
-	}
-	var h = Math.floor( Math.log(len) / Math.log(M) );
-	return initialize_(f, h, 0, len);
-}
-
-function initialize_(f, h, from, to)
-{
-	if (h === 0)
-	{
-		var table = new Array((to - from) % (M + 1));
-		for (var i = 0; i < table.length; i++)
-		{
-		  table[i] = f(from + i);
-		}
-		return {
-			ctor: '_Array',
-			height: 0,
-			table: table
-		};
-	}
-
-	var step = Math.pow(M, h);
-	var table = new Array(Math.ceil((to - from) / step));
-	var lengths = new Array(table.length);
-	for (var i = 0; i < table.length; i++)
-	{
-		table[i] = initialize_(f, h - 1, from + (i * step), Math.min(from + ((i + 1) * step), to));
-		lengths[i] = length(table[i]) + (i > 0 ? lengths[i-1] : 0);
-	}
-	return {
-		ctor: '_Array',
-		height: h,
-		table: table,
-		lengths: lengths
-	};
-}
-
-function fromList(list)
-{
-	if (list.ctor === '[]')
-	{
-		return empty;
-	}
-
-	// Allocate M sized blocks (table) and write list elements to it.
-	var table = new Array(M);
-	var nodes = [];
-	var i = 0;
-
-	while (list.ctor !== '[]')
-	{
-		table[i] = list._0;
-		list = list._1;
-		i++;
-
-		// table is full, so we can push a leaf containing it into the
-		// next node.
-		if (i === M)
-		{
-			var leaf = {
-				ctor: '_Array',
-				height: 0,
-				table: table
-			};
-			fromListPush(leaf, nodes);
-			table = new Array(M);
-			i = 0;
-		}
-	}
-
-	// Maybe there is something left on the table.
-	if (i > 0)
-	{
-		var leaf = {
-			ctor: '_Array',
-			height: 0,
-			table: table.splice(0, i)
-		};
-		fromListPush(leaf, nodes);
-	}
-
-	// Go through all of the nodes and eventually push them into higher nodes.
-	for (var h = 0; h < nodes.length - 1; h++)
-	{
-		if (nodes[h].table.length > 0)
-		{
-			fromListPush(nodes[h], nodes);
-		}
-	}
-
-	var head = nodes[nodes.length - 1];
-	if (head.height > 0 && head.table.length === 1)
-	{
-		return head.table[0];
-	}
-	else
-	{
-		return head;
-	}
-}
-
-// Push a node into a higher node as a child.
-function fromListPush(toPush, nodes)
-{
-	var h = toPush.height;
-
-	// Maybe the node on this height does not exist.
-	if (nodes.length === h)
-	{
-		var node = {
-			ctor: '_Array',
-			height: h + 1,
-			table: [],
-			lengths: []
-		};
-		nodes.push(node);
-	}
-
-	nodes[h].table.push(toPush);
-	var len = length(toPush);
-	if (nodes[h].lengths.length > 0)
-	{
-		len += nodes[h].lengths[nodes[h].lengths.length - 1];
-	}
-	nodes[h].lengths.push(len);
-
-	if (nodes[h].table.length === M)
-	{
-		fromListPush(nodes[h], nodes);
-		nodes[h] = {
-			ctor: '_Array',
-			height: h + 1,
-			table: [],
-			lengths: []
-		};
-	}
-}
-
-// Pushes an item via push_ to the bottom right of a tree.
-function push(item, a)
-{
-	var pushed = push_(item, a);
-	if (pushed !== null)
-	{
-		return pushed;
-	}
-
-	var newTree = create(item, a.height);
-	return siblise(a, newTree);
-}
-
-// Recursively tries to push an item to the bottom-right most
-// tree possible. If there is no space left for the item,
-// null will be returned.
-function push_(item, a)
-{
-	// Handle resursion stop at leaf level.
-	if (a.height === 0)
-	{
-		if (a.table.length < M)
-		{
-			var newA = {
-				ctor: '_Array',
-				height: 0,
-				table: a.table.slice()
-			};
-			newA.table.push(item);
-			return newA;
-		}
-		else
-		{
-		  return null;
-		}
-	}
-
-	// Recursively push
-	var pushed = push_(item, botRight(a));
-
-	// There was space in the bottom right tree, so the slot will
-	// be updated.
-	if (pushed !== null)
-	{
-		var newA = nodeCopy(a);
-		newA.table[newA.table.length - 1] = pushed;
-		newA.lengths[newA.lengths.length - 1]++;
-		return newA;
-	}
-
-	// When there was no space left, check if there is space left
-	// for a new slot with a tree which contains only the item
-	// at the bottom.
-	if (a.table.length < M)
-	{
-		var newSlot = create(item, a.height - 1);
-		var newA = nodeCopy(a);
-		newA.table.push(newSlot);
-		newA.lengths.push(newA.lengths[newA.lengths.length - 1] + length(newSlot));
-		return newA;
-	}
-	else
-	{
-		return null;
-	}
-}
-
-// Converts an array into a list of elements.
-function toList(a)
-{
-	return toList_(_elm_lang$core$Native_List.Nil, a);
-}
-
-function toList_(list, a)
-{
-	for (var i = a.table.length - 1; i >= 0; i--)
-	{
-		list =
-			a.height === 0
-				? _elm_lang$core$Native_List.Cons(a.table[i], list)
-				: toList_(list, a.table[i]);
-	}
-	return list;
-}
-
-// Maps a function over the elements of an array.
-function map(f, a)
-{
-	var newA = {
-		ctor: '_Array',
-		height: a.height,
-		table: new Array(a.table.length)
-	};
-	if (a.height > 0)
-	{
-		newA.lengths = a.lengths;
-	}
-	for (var i = 0; i < a.table.length; i++)
-	{
-		newA.table[i] =
-			a.height === 0
-				? f(a.table[i])
-				: map(f, a.table[i]);
-	}
-	return newA;
-}
-
-// Maps a function over the elements with their index as first argument.
-function indexedMap(f, a)
-{
-	return indexedMap_(f, a, 0);
-}
-
-function indexedMap_(f, a, from)
-{
-	var newA = {
-		ctor: '_Array',
-		height: a.height,
-		table: new Array(a.table.length)
-	};
-	if (a.height > 0)
-	{
-		newA.lengths = a.lengths;
-	}
-	for (var i = 0; i < a.table.length; i++)
-	{
-		newA.table[i] =
-			a.height === 0
-				? A2(f, from + i, a.table[i])
-				: indexedMap_(f, a.table[i], i == 0 ? from : from + a.lengths[i - 1]);
-	}
-	return newA;
-}
-
-function foldl(f, b, a)
-{
-	if (a.height === 0)
-	{
-		for (var i = 0; i < a.table.length; i++)
-		{
-			b = A2(f, a.table[i], b);
-		}
-	}
-	else
-	{
-		for (var i = 0; i < a.table.length; i++)
-		{
-			b = foldl(f, b, a.table[i]);
-		}
-	}
-	return b;
-}
-
-function foldr(f, b, a)
-{
-	if (a.height === 0)
-	{
-		for (var i = a.table.length; i--; )
-		{
-			b = A2(f, a.table[i], b);
-		}
-	}
-	else
-	{
-		for (var i = a.table.length; i--; )
-		{
-			b = foldr(f, b, a.table[i]);
-		}
-	}
-	return b;
-}
-
-// TODO: currently, it slices the right, then the left. This can be
-// optimized.
-function slice(from, to, a)
-{
-	if (from < 0)
-	{
-		from += length(a);
-	}
-	if (to < 0)
-	{
-		to += length(a);
-	}
-	return sliceLeft(from, sliceRight(to, a));
-}
-
-function sliceRight(to, a)
-{
-	if (to === length(a))
-	{
-		return a;
-	}
-
-	// Handle leaf level.
-	if (a.height === 0)
-	{
-		var newA = { ctor:'_Array', height:0 };
-		newA.table = a.table.slice(0, to);
-		return newA;
-	}
-
-	// Slice the right recursively.
-	var right = getSlot(to, a);
-	var sliced = sliceRight(to - (right > 0 ? a.lengths[right - 1] : 0), a.table[right]);
-
-	// Maybe the a node is not even needed, as sliced contains the whole slice.
-	if (right === 0)
-	{
-		return sliced;
-	}
-
-	// Create new node.
-	var newA = {
-		ctor: '_Array',
-		height: a.height,
-		table: a.table.slice(0, right),
-		lengths: a.lengths.slice(0, right)
-	};
-	if (sliced.table.length > 0)
-	{
-		newA.table[right] = sliced;
-		newA.lengths[right] = length(sliced) + (right > 0 ? newA.lengths[right - 1] : 0);
-	}
-	return newA;
-}
-
-function sliceLeft(from, a)
-{
-	if (from === 0)
-	{
-		return a;
-	}
-
-	// Handle leaf level.
-	if (a.height === 0)
-	{
-		var newA = { ctor:'_Array', height:0 };
-		newA.table = a.table.slice(from, a.table.length + 1);
-		return newA;
-	}
-
-	// Slice the left recursively.
-	var left = getSlot(from, a);
-	var sliced = sliceLeft(from - (left > 0 ? a.lengths[left - 1] : 0), a.table[left]);
-
-	// Maybe the a node is not even needed, as sliced contains the whole slice.
-	if (left === a.table.length - 1)
-	{
-		return sliced;
-	}
-
-	// Create new node.
-	var newA = {
-		ctor: '_Array',
-		height: a.height,
-		table: a.table.slice(left, a.table.length + 1),
-		lengths: new Array(a.table.length - left)
-	};
-	newA.table[0] = sliced;
-	var len = 0;
-	for (var i = 0; i < newA.table.length; i++)
-	{
-		len += length(newA.table[i]);
-		newA.lengths[i] = len;
-	}
-
-	return newA;
-}
-
-// Appends two trees.
-function append(a,b)
-{
-	if (a.table.length === 0)
-	{
-		return b;
-	}
-	if (b.table.length === 0)
-	{
-		return a;
-	}
-
-	var c = append_(a, b);
-
-	// Check if both nodes can be crunshed together.
-	if (c[0].table.length + c[1].table.length <= M)
-	{
-		if (c[0].table.length === 0)
-		{
-			return c[1];
-		}
-		if (c[1].table.length === 0)
-		{
-			return c[0];
-		}
-
-		// Adjust .table and .lengths
-		c[0].table = c[0].table.concat(c[1].table);
-		if (c[0].height > 0)
-		{
-			var len = length(c[0]);
-			for (var i = 0; i < c[1].lengths.length; i++)
-			{
-				c[1].lengths[i] += len;
-			}
-			c[0].lengths = c[0].lengths.concat(c[1].lengths);
-		}
-
-		return c[0];
-	}
-
-	if (c[0].height > 0)
-	{
-		var toRemove = calcToRemove(a, b);
-		if (toRemove > E)
-		{
-			c = shuffle(c[0], c[1], toRemove);
-		}
-	}
-
-	return siblise(c[0], c[1]);
-}
-
-// Returns an array of two nodes; right and left. One node _may_ be empty.
-function append_(a, b)
-{
-	if (a.height === 0 && b.height === 0)
-	{
-		return [a, b];
-	}
-
-	if (a.height !== 1 || b.height !== 1)
-	{
-		if (a.height === b.height)
-		{
-			a = nodeCopy(a);
-			b = nodeCopy(b);
-			var appended = append_(botRight(a), botLeft(b));
-
-			insertRight(a, appended[1]);
-			insertLeft(b, appended[0]);
-		}
-		else if (a.height > b.height)
-		{
-			a = nodeCopy(a);
-			var appended = append_(botRight(a), b);
-
-			insertRight(a, appended[0]);
-			b = parentise(appended[1], appended[1].height + 1);
-		}
-		else
-		{
-			b = nodeCopy(b);
-			var appended = append_(a, botLeft(b));
-
-			var left = appended[0].table.length === 0 ? 0 : 1;
-			var right = left === 0 ? 1 : 0;
-			insertLeft(b, appended[left]);
-			a = parentise(appended[right], appended[right].height + 1);
-		}
-	}
-
-	// Check if balancing is needed and return based on that.
-	if (a.table.length === 0 || b.table.length === 0)
-	{
-		return [a, b];
-	}
-
-	var toRemove = calcToRemove(a, b);
-	if (toRemove <= E)
-	{
-		return [a, b];
-	}
-	return shuffle(a, b, toRemove);
-}
-
-// Helperfunctions for append_. Replaces a child node at the side of the parent.
-function insertRight(parent, node)
-{
-	var index = parent.table.length - 1;
-	parent.table[index] = node;
-	parent.lengths[index] = length(node);
-	parent.lengths[index] += index > 0 ? parent.lengths[index - 1] : 0;
-}
-
-function insertLeft(parent, node)
-{
-	if (node.table.length > 0)
-	{
-		parent.table[0] = node;
-		parent.lengths[0] = length(node);
-
-		var len = length(parent.table[0]);
-		for (var i = 1; i < parent.lengths.length; i++)
-		{
-			len += length(parent.table[i]);
-			parent.lengths[i] = len;
-		}
-	}
-	else
-	{
-		parent.table.shift();
-		for (var i = 1; i < parent.lengths.length; i++)
-		{
-			parent.lengths[i] = parent.lengths[i] - parent.lengths[0];
-		}
-		parent.lengths.shift();
-	}
-}
-
-// Returns the extra search steps for E. Refer to the paper.
-function calcToRemove(a, b)
-{
-	var subLengths = 0;
-	for (var i = 0; i < a.table.length; i++)
-	{
-		subLengths += a.table[i].table.length;
-	}
-	for (var i = 0; i < b.table.length; i++)
-	{
-		subLengths += b.table[i].table.length;
-	}
-
-	var toRemove = a.table.length + b.table.length;
-	return toRemove - (Math.floor((subLengths - 1) / M) + 1);
-}
-
-// get2, set2 and saveSlot are helpers for accessing elements over two arrays.
-function get2(a, b, index)
-{
-	return index < a.length
-		? a[index]
-		: b[index - a.length];
-}
-
-function set2(a, b, index, value)
-{
-	if (index < a.length)
-	{
-		a[index] = value;
-	}
-	else
-	{
-		b[index - a.length] = value;
-	}
-}
-
-function saveSlot(a, b, index, slot)
-{
-	set2(a.table, b.table, index, slot);
-
-	var l = (index === 0 || index === a.lengths.length)
-		? 0
-		: get2(a.lengths, a.lengths, index - 1);
-
-	set2(a.lengths, b.lengths, index, l + length(slot));
-}
-
-// Creates a node or leaf with a given length at their arrays for perfomance.
-// Is only used by shuffle.
-function createNode(h, length)
-{
-	if (length < 0)
-	{
-		length = 0;
-	}
-	var a = {
-		ctor: '_Array',
-		height: h,
-		table: new Array(length)
-	};
-	if (h > 0)
-	{
-		a.lengths = new Array(length);
-	}
-	return a;
-}
-
-// Returns an array of two balanced nodes.
-function shuffle(a, b, toRemove)
-{
-	var newA = createNode(a.height, Math.min(M, a.table.length + b.table.length - toRemove));
-	var newB = createNode(a.height, newA.table.length - (a.table.length + b.table.length - toRemove));
-
-	// Skip the slots with size M. More precise: copy the slot references
-	// to the new node
-	var read = 0;
-	while (get2(a.table, b.table, read).table.length % M === 0)
-	{
-		set2(newA.table, newB.table, read, get2(a.table, b.table, read));
-		set2(newA.lengths, newB.lengths, read, get2(a.lengths, b.lengths, read));
-		read++;
-	}
-
-	// Pulling items from left to right, caching in a slot before writing
-	// it into the new nodes.
-	var write = read;
-	var slot = new createNode(a.height - 1, 0);
-	var from = 0;
-
-	// If the current slot is still containing data, then there will be at
-	// least one more write, so we do not break this loop yet.
-	while (read - write - (slot.table.length > 0 ? 1 : 0) < toRemove)
-	{
-		// Find out the max possible items for copying.
-		var source = get2(a.table, b.table, read);
-		var to = Math.min(M - slot.table.length, source.table.length);
-
-		// Copy and adjust size table.
-		slot.table = slot.table.concat(source.table.slice(from, to));
-		if (slot.height > 0)
-		{
-			var len = slot.lengths.length;
-			for (var i = len; i < len + to - from; i++)
-			{
-				slot.lengths[i] = length(slot.table[i]);
-				slot.lengths[i] += (i > 0 ? slot.lengths[i - 1] : 0);
-			}
-		}
-
-		from += to;
-
-		// Only proceed to next slots[i] if the current one was
-		// fully copied.
-		if (source.table.length <= to)
-		{
-			read++; from = 0;
-		}
-
-		// Only create a new slot if the current one is filled up.
-		if (slot.table.length === M)
-		{
-			saveSlot(newA, newB, write, slot);
-			slot = createNode(a.height - 1, 0);
-			write++;
-		}
-	}
-
-	// Cleanup after the loop. Copy the last slot into the new nodes.
-	if (slot.table.length > 0)
-	{
-		saveSlot(newA, newB, write, slot);
-		write++;
-	}
-
-	// Shift the untouched slots to the left
-	while (read < a.table.length + b.table.length )
-	{
-		saveSlot(newA, newB, write, get2(a.table, b.table, read));
-		read++;
-		write++;
-	}
-
-	return [newA, newB];
-}
-
-// Navigation functions
-function botRight(a)
-{
-	return a.table[a.table.length - 1];
-}
-function botLeft(a)
-{
-	return a.table[0];
-}
-
-// Copies a node for updating. Note that you should not use this if
-// only updating only one of "table" or "lengths" for performance reasons.
-function nodeCopy(a)
-{
-	var newA = {
-		ctor: '_Array',
-		height: a.height,
-		table: a.table.slice()
-	};
-	if (a.height > 0)
-	{
-		newA.lengths = a.lengths.slice();
-	}
-	return newA;
-}
-
-// Returns how many items are in the tree.
-function length(array)
-{
-	if (array.height === 0)
-	{
-		return array.table.length;
-	}
-	else
-	{
-		return array.lengths[array.lengths.length - 1];
-	}
-}
-
-// Calculates in which slot of "table" the item probably is, then
-// find the exact slot via forward searching in  "lengths". Returns the index.
-function getSlot(i, a)
-{
-	var slot = i >> (5 * a.height);
-	while (a.lengths[slot] <= i)
-	{
-		slot++;
-	}
-	return slot;
-}
-
-// Recursively creates a tree with a given height containing
-// only the given item.
-function create(item, h)
-{
-	if (h === 0)
-	{
-		return {
-			ctor: '_Array',
-			height: 0,
-			table: [item]
-		};
-	}
-	return {
-		ctor: '_Array',
-		height: h,
-		table: [create(item, h - 1)],
-		lengths: [1]
-	};
-}
-
-// Recursively creates a tree that contains the given tree.
-function parentise(tree, h)
-{
-	if (h === tree.height)
-	{
-		return tree;
-	}
-
-	return {
-		ctor: '_Array',
-		height: h,
-		table: [parentise(tree, h - 1)],
-		lengths: [length(tree)]
-	};
-}
-
-// Emphasizes blood brotherhood beneath two trees.
-function siblise(a, b)
-{
-	return {
-		ctor: '_Array',
-		height: a.height + 1,
-		table: [a, b],
-		lengths: [length(a), length(a) + length(b)]
-	};
-}
-
-function toJSArray(a)
-{
-	var jsArray = new Array(length(a));
-	toJSArray_(jsArray, 0, a);
-	return jsArray;
-}
-
-function toJSArray_(jsArray, i, a)
-{
-	for (var t = 0; t < a.table.length; t++)
-	{
-		if (a.height === 0)
-		{
-			jsArray[i + t] = a.table[t];
-		}
-		else
-		{
-			var inc = t === 0 ? 0 : a.lengths[t - 1];
-			toJSArray_(jsArray, i + inc, a.table[t]);
-		}
-	}
-}
-
-function fromJSArray(jsArray)
-{
-	if (jsArray.length === 0)
-	{
-		return empty;
-	}
-	var h = Math.floor(Math.log(jsArray.length) / Math.log(M));
-	return fromJSArray_(jsArray, h, 0, jsArray.length);
-}
-
-function fromJSArray_(jsArray, h, from, to)
-{
-	if (h === 0)
-	{
-		return {
-			ctor: '_Array',
-			height: 0,
-			table: jsArray.slice(from, to)
-		};
-	}
-
-	var step = Math.pow(M, h);
-	var table = new Array(Math.ceil((to - from) / step));
-	var lengths = new Array(table.length);
-	for (var i = 0; i < table.length; i++)
-	{
-		table[i] = fromJSArray_(jsArray, h - 1, from + (i * step), Math.min(from + ((i + 1) * step), to));
-		lengths[i] = length(table[i]) + (i > 0 ? lengths[i - 1] : 0);
-	}
-	return {
-		ctor: '_Array',
-		height: h,
-		table: table,
-		lengths: lengths
-	};
-}
-
-return {
-	empty: empty,
-	fromList: fromList,
-	toList: toList,
-	initialize: F2(initialize),
-	append: F2(append),
-	push: F2(push),
-	slice: F3(slice),
-	get: F2(get),
-	set: F3(set),
-	map: F2(map),
-	indexedMap: F2(indexedMap),
-	foldl: F3(foldl),
-	foldr: F3(foldr),
-	length: length,
-
-	toJSArray: toJSArray,
-	fromJSArray: fromJSArray
-};
-
-}();var _elm_lang$core$Array$append = _elm_lang$core$Native_Array.append;
-var _elm_lang$core$Array$length = _elm_lang$core$Native_Array.length;
-var _elm_lang$core$Array$isEmpty = function (array) {
-	return _elm_lang$core$Native_Utils.eq(
-		_elm_lang$core$Array$length(array),
-		0);
-};
-var _elm_lang$core$Array$slice = _elm_lang$core$Native_Array.slice;
-var _elm_lang$core$Array$set = _elm_lang$core$Native_Array.set;
-var _elm_lang$core$Array$get = F2(
-	function (i, array) {
-		return ((_elm_lang$core$Native_Utils.cmp(0, i) < 1) && (_elm_lang$core$Native_Utils.cmp(
-			i,
-			_elm_lang$core$Native_Array.length(array)) < 0)) ? _elm_lang$core$Maybe$Just(
-			A2(_elm_lang$core$Native_Array.get, i, array)) : _elm_lang$core$Maybe$Nothing;
-	});
-var _elm_lang$core$Array$push = _elm_lang$core$Native_Array.push;
-var _elm_lang$core$Array$empty = _elm_lang$core$Native_Array.empty;
-var _elm_lang$core$Array$filter = F2(
-	function (isOkay, arr) {
-		var update = F2(
-			function (x, xs) {
-				return isOkay(x) ? A2(_elm_lang$core$Native_Array.push, x, xs) : xs;
-			});
-		return A3(_elm_lang$core$Native_Array.foldl, update, _elm_lang$core$Native_Array.empty, arr);
-	});
-var _elm_lang$core$Array$foldr = _elm_lang$core$Native_Array.foldr;
-var _elm_lang$core$Array$foldl = _elm_lang$core$Native_Array.foldl;
-var _elm_lang$core$Array$indexedMap = _elm_lang$core$Native_Array.indexedMap;
-var _elm_lang$core$Array$map = _elm_lang$core$Native_Array.map;
-var _elm_lang$core$Array$toIndexedList = function (array) {
-	return A3(
-		_elm_lang$core$List$map2,
-		F2(
-			function (v0, v1) {
-				return {ctor: '_Tuple2', _0: v0, _1: v1};
-			}),
-		_elm_lang$core$Native_List.range(
-			0,
-			_elm_lang$core$Native_Array.length(array) - 1),
-		_elm_lang$core$Native_Array.toList(array));
-};
-var _elm_lang$core$Array$toList = _elm_lang$core$Native_Array.toList;
-var _elm_lang$core$Array$fromList = _elm_lang$core$Native_Array.fromList;
-var _elm_lang$core$Array$initialize = _elm_lang$core$Native_Array.initialize;
-var _elm_lang$core$Array$repeat = F2(
-	function (n, e) {
-		return A2(
-			_elm_lang$core$Array$initialize,
-			n,
-			_elm_lang$core$Basics$always(e));
-	});
-var _elm_lang$core$Array$Array = {ctor: 'Array'};
 //import Maybe, Native.Array, Native.List, Native.Utils, Result //
 
 var _elm_lang$core$Native_Json = function() {
@@ -6002,6 +5999,1146 @@ var _elm_lang$core$Json_Decode$dict = function (decoder) {
 		_elm_lang$core$Json_Decode$keyValuePairs(decoder));
 };
 var _elm_lang$core$Json_Decode$Decoder = {ctor: 'Decoder'};
+var _elm_lang$core$Set$foldr = F3(
+	function (f, b, _p0) {
+		var _p1 = _p0;
+		return A3(
+			_elm_lang$core$Dict$foldr,
+			F3(
+				function (k, _p2, b) {
+					return A2(f, k, b);
+				}),
+			b,
+			_p1._0);
+	});
+var _elm_lang$core$Set$foldl = F3(
+	function (f, b, _p3) {
+		var _p4 = _p3;
+		return A3(
+			_elm_lang$core$Dict$foldl,
+			F3(
+				function (k, _p5, b) {
+					return A2(f, k, b);
+				}),
+			b,
+			_p4._0);
+	});
+var _elm_lang$core$Set$toList = function (_p6) {
+	var _p7 = _p6;
+	return _elm_lang$core$Dict$keys(_p7._0);
+};
+var _elm_lang$core$Set$size = function (_p8) {
+	var _p9 = _p8;
+	return _elm_lang$core$Dict$size(_p9._0);
+};
+var _elm_lang$core$Set$member = F2(
+	function (k, _p10) {
+		var _p11 = _p10;
+		return A2(_elm_lang$core$Dict$member, k, _p11._0);
+	});
+var _elm_lang$core$Set$isEmpty = function (_p12) {
+	var _p13 = _p12;
+	return _elm_lang$core$Dict$isEmpty(_p13._0);
+};
+var _elm_lang$core$Set$Set_elm_builtin = function (a) {
+	return {ctor: 'Set_elm_builtin', _0: a};
+};
+var _elm_lang$core$Set$empty = _elm_lang$core$Set$Set_elm_builtin(_elm_lang$core$Dict$empty);
+var _elm_lang$core$Set$singleton = function (k) {
+	return _elm_lang$core$Set$Set_elm_builtin(
+		A2(
+			_elm_lang$core$Dict$singleton,
+			k,
+			{ctor: '_Tuple0'}));
+};
+var _elm_lang$core$Set$insert = F2(
+	function (k, _p14) {
+		var _p15 = _p14;
+		return _elm_lang$core$Set$Set_elm_builtin(
+			A3(
+				_elm_lang$core$Dict$insert,
+				k,
+				{ctor: '_Tuple0'},
+				_p15._0));
+	});
+var _elm_lang$core$Set$fromList = function (xs) {
+	return A3(_elm_lang$core$List$foldl, _elm_lang$core$Set$insert, _elm_lang$core$Set$empty, xs);
+};
+var _elm_lang$core$Set$map = F2(
+	function (f, s) {
+		return _elm_lang$core$Set$fromList(
+			A2(
+				_elm_lang$core$List$map,
+				f,
+				_elm_lang$core$Set$toList(s)));
+	});
+var _elm_lang$core$Set$remove = F2(
+	function (k, _p16) {
+		var _p17 = _p16;
+		return _elm_lang$core$Set$Set_elm_builtin(
+			A2(_elm_lang$core$Dict$remove, k, _p17._0));
+	});
+var _elm_lang$core$Set$union = F2(
+	function (_p19, _p18) {
+		var _p20 = _p19;
+		var _p21 = _p18;
+		return _elm_lang$core$Set$Set_elm_builtin(
+			A2(_elm_lang$core$Dict$union, _p20._0, _p21._0));
+	});
+var _elm_lang$core$Set$intersect = F2(
+	function (_p23, _p22) {
+		var _p24 = _p23;
+		var _p25 = _p22;
+		return _elm_lang$core$Set$Set_elm_builtin(
+			A2(_elm_lang$core$Dict$intersect, _p24._0, _p25._0));
+	});
+var _elm_lang$core$Set$diff = F2(
+	function (_p27, _p26) {
+		var _p28 = _p27;
+		var _p29 = _p26;
+		return _elm_lang$core$Set$Set_elm_builtin(
+			A2(_elm_lang$core$Dict$diff, _p28._0, _p29._0));
+	});
+var _elm_lang$core$Set$filter = F2(
+	function (p, _p30) {
+		var _p31 = _p30;
+		return _elm_lang$core$Set$Set_elm_builtin(
+			A2(
+				_elm_lang$core$Dict$filter,
+				F2(
+					function (k, _p32) {
+						return p(k);
+					}),
+				_p31._0));
+	});
+var _elm_lang$core$Set$partition = F2(
+	function (p, _p33) {
+		var _p34 = _p33;
+		var _p35 = A2(
+			_elm_lang$core$Dict$partition,
+			F2(
+				function (k, _p36) {
+					return p(k);
+				}),
+			_p34._0);
+		var p1 = _p35._0;
+		var p2 = _p35._1;
+		return {
+			ctor: '_Tuple2',
+			_0: _elm_lang$core$Set$Set_elm_builtin(p1),
+			_1: _elm_lang$core$Set$Set_elm_builtin(p2)
+		};
+	});
+var _elm_community$list_extra$List_Extra$greedyGroupsOfWithStep = F3(
+	function (size, step, xs) {
+		var okayXs = _elm_lang$core$Native_Utils.cmp(
+			_elm_lang$core$List$length(xs),
+			0) > 0;
+		var okayArgs = (_elm_lang$core$Native_Utils.cmp(size, 0) > 0) && (_elm_lang$core$Native_Utils.cmp(step, 0) > 0);
+		var xs$ = A2(_elm_lang$core$List$drop, step, xs);
+		var group = A2(_elm_lang$core$List$take, size, xs);
+		return (okayArgs && okayXs) ? A2(
+			_elm_lang$core$List_ops['::'],
+			group,
+			A3(_elm_community$list_extra$List_Extra$greedyGroupsOfWithStep, size, step, xs$)) : _elm_lang$core$Native_List.fromArray(
+			[]);
+	});
+var _elm_community$list_extra$List_Extra$greedyGroupsOf = F2(
+	function (size, xs) {
+		return A3(_elm_community$list_extra$List_Extra$greedyGroupsOfWithStep, size, size, xs);
+	});
+var _elm_community$list_extra$List_Extra$groupsOfWithStep = F3(
+	function (size, step, xs) {
+		var okayArgs = (_elm_lang$core$Native_Utils.cmp(size, 0) > 0) && (_elm_lang$core$Native_Utils.cmp(step, 0) > 0);
+		var xs$ = A2(_elm_lang$core$List$drop, step, xs);
+		var group = A2(_elm_lang$core$List$take, size, xs);
+		var okayLength = _elm_lang$core$Native_Utils.eq(
+			size,
+			_elm_lang$core$List$length(group));
+		return (okayArgs && okayLength) ? A2(
+			_elm_lang$core$List_ops['::'],
+			group,
+			A3(_elm_community$list_extra$List_Extra$groupsOfWithStep, size, step, xs$)) : _elm_lang$core$Native_List.fromArray(
+			[]);
+	});
+var _elm_community$list_extra$List_Extra$groupsOf = F2(
+	function (size, xs) {
+		return A3(_elm_community$list_extra$List_Extra$groupsOfWithStep, size, size, xs);
+	});
+var _elm_community$list_extra$List_Extra$zip5 = _elm_lang$core$List$map5(
+	F5(
+		function (v0, v1, v2, v3, v4) {
+			return {ctor: '_Tuple5', _0: v0, _1: v1, _2: v2, _3: v3, _4: v4};
+		}));
+var _elm_community$list_extra$List_Extra$zip4 = _elm_lang$core$List$map4(
+	F4(
+		function (v0, v1, v2, v3) {
+			return {ctor: '_Tuple4', _0: v0, _1: v1, _2: v2, _3: v3};
+		}));
+var _elm_community$list_extra$List_Extra$zip3 = _elm_lang$core$List$map3(
+	F3(
+		function (v0, v1, v2) {
+			return {ctor: '_Tuple3', _0: v0, _1: v1, _2: v2};
+		}));
+var _elm_community$list_extra$List_Extra$zip = _elm_lang$core$List$map2(
+	F2(
+		function (v0, v1) {
+			return {ctor: '_Tuple2', _0: v0, _1: v1};
+		}));
+var _elm_community$list_extra$List_Extra$isPrefixOf = function (prefix) {
+	return function (_p0) {
+		return A2(
+			_elm_lang$core$List$all,
+			_elm_lang$core$Basics$identity,
+			A3(
+				_elm_lang$core$List$map2,
+				F2(
+					function (x, y) {
+						return _elm_lang$core$Native_Utils.eq(x, y);
+					}),
+				prefix,
+				_p0));
+	};
+};
+var _elm_community$list_extra$List_Extra$isSuffixOf = F2(
+	function (suffix, xs) {
+		return A2(
+			_elm_community$list_extra$List_Extra$isPrefixOf,
+			_elm_lang$core$List$reverse(suffix),
+			_elm_lang$core$List$reverse(xs));
+	});
+var _elm_community$list_extra$List_Extra$selectSplit = function (xs) {
+	var _p1 = xs;
+	if (_p1.ctor === '[]') {
+		return _elm_lang$core$Native_List.fromArray(
+			[]);
+	} else {
+		var _p5 = _p1._1;
+		var _p4 = _p1._0;
+		return A2(
+			_elm_lang$core$List_ops['::'],
+			{
+				ctor: '_Tuple3',
+				_0: _elm_lang$core$Native_List.fromArray(
+					[]),
+				_1: _p4,
+				_2: _p5
+			},
+			A2(
+				_elm_lang$core$List$map,
+				function (_p2) {
+					var _p3 = _p2;
+					return {
+						ctor: '_Tuple3',
+						_0: A2(_elm_lang$core$List_ops['::'], _p4, _p3._0),
+						_1: _p3._1,
+						_2: _p3._2
+					};
+				},
+				_elm_community$list_extra$List_Extra$selectSplit(_p5)));
+	}
+};
+var _elm_community$list_extra$List_Extra$select = function (xs) {
+	var _p6 = xs;
+	if (_p6.ctor === '[]') {
+		return _elm_lang$core$Native_List.fromArray(
+			[]);
+	} else {
+		var _p10 = _p6._1;
+		var _p9 = _p6._0;
+		return A2(
+			_elm_lang$core$List_ops['::'],
+			{ctor: '_Tuple2', _0: _p9, _1: _p10},
+			A2(
+				_elm_lang$core$List$map,
+				function (_p7) {
+					var _p8 = _p7;
+					return {
+						ctor: '_Tuple2',
+						_0: _p8._0,
+						_1: A2(_elm_lang$core$List_ops['::'], _p9, _p8._1)
+					};
+				},
+				_elm_community$list_extra$List_Extra$select(_p10)));
+	}
+};
+var _elm_community$list_extra$List_Extra$tailsHelp = F2(
+	function (e, list) {
+		var _p11 = list;
+		if (_p11.ctor === '::') {
+			var _p12 = _p11._0;
+			return A2(
+				_elm_lang$core$List_ops['::'],
+				A2(_elm_lang$core$List_ops['::'], e, _p12),
+				A2(_elm_lang$core$List_ops['::'], _p12, _p11._1));
+		} else {
+			return _elm_lang$core$Native_List.fromArray(
+				[]);
+		}
+	});
+var _elm_community$list_extra$List_Extra$tails = A2(
+	_elm_lang$core$List$foldr,
+	_elm_community$list_extra$List_Extra$tailsHelp,
+	_elm_lang$core$Native_List.fromArray(
+		[
+			_elm_lang$core$Native_List.fromArray(
+			[])
+		]));
+var _elm_community$list_extra$List_Extra$isInfixOf = F2(
+	function (infix, xs) {
+		return A2(
+			_elm_lang$core$List$any,
+			_elm_community$list_extra$List_Extra$isPrefixOf(infix),
+			_elm_community$list_extra$List_Extra$tails(xs));
+	});
+var _elm_community$list_extra$List_Extra$inits = A2(
+	_elm_lang$core$List$foldr,
+	F2(
+		function (e, acc) {
+			return A2(
+				_elm_lang$core$List_ops['::'],
+				_elm_lang$core$Native_List.fromArray(
+					[]),
+				A2(
+					_elm_lang$core$List$map,
+					F2(
+						function (x, y) {
+							return A2(_elm_lang$core$List_ops['::'], x, y);
+						})(e),
+					acc));
+		}),
+	_elm_lang$core$Native_List.fromArray(
+		[
+			_elm_lang$core$Native_List.fromArray(
+			[])
+		]));
+var _elm_community$list_extra$List_Extra$groupWhileTransitively = F2(
+	function (cmp, xs$) {
+		var _p13 = xs$;
+		if (_p13.ctor === '[]') {
+			return _elm_lang$core$Native_List.fromArray(
+				[]);
+		} else {
+			if (_p13._1.ctor === '[]') {
+				return _elm_lang$core$Native_List.fromArray(
+					[
+						_elm_lang$core$Native_List.fromArray(
+						[_p13._0])
+					]);
+			} else {
+				var _p15 = _p13._0;
+				var _p14 = A2(_elm_community$list_extra$List_Extra$groupWhileTransitively, cmp, _p13._1);
+				if (_p14.ctor === '::') {
+					return A2(cmp, _p15, _p13._1._0) ? A2(
+						_elm_lang$core$List_ops['::'],
+						A2(_elm_lang$core$List_ops['::'], _p15, _p14._0),
+						_p14._1) : A2(
+						_elm_lang$core$List_ops['::'],
+						_elm_lang$core$Native_List.fromArray(
+							[_p15]),
+						_p14);
+				} else {
+					return _elm_lang$core$Native_List.fromArray(
+						[]);
+				}
+			}
+		}
+	});
+var _elm_community$list_extra$List_Extra$stripPrefix = F2(
+	function (prefix, xs) {
+		var step = F2(
+			function (e, m) {
+				var _p16 = m;
+				if (_p16.ctor === 'Nothing') {
+					return _elm_lang$core$Maybe$Nothing;
+				} else {
+					if (_p16._0.ctor === '[]') {
+						return _elm_lang$core$Maybe$Nothing;
+					} else {
+						return _elm_lang$core$Native_Utils.eq(e, _p16._0._0) ? _elm_lang$core$Maybe$Just(_p16._0._1) : _elm_lang$core$Maybe$Nothing;
+					}
+				}
+			});
+		return A3(
+			_elm_lang$core$List$foldl,
+			step,
+			_elm_lang$core$Maybe$Just(xs),
+			prefix);
+	});
+var _elm_community$list_extra$List_Extra$dropWhileEnd = function (p) {
+	return A2(
+		_elm_lang$core$List$foldr,
+		F2(
+			function (x, xs) {
+				return (p(x) && _elm_lang$core$List$isEmpty(xs)) ? _elm_lang$core$Native_List.fromArray(
+					[]) : A2(_elm_lang$core$List_ops['::'], x, xs);
+			}),
+		_elm_lang$core$Native_List.fromArray(
+			[]));
+};
+var _elm_community$list_extra$List_Extra$takeWhileEnd = function (p) {
+	var step = F2(
+		function (x, _p17) {
+			var _p18 = _p17;
+			var _p19 = _p18._0;
+			return (p(x) && _p18._1) ? {
+				ctor: '_Tuple2',
+				_0: A2(_elm_lang$core$List_ops['::'], x, _p19),
+				_1: true
+			} : {ctor: '_Tuple2', _0: _p19, _1: false};
+		});
+	return function (_p20) {
+		return _elm_lang$core$Basics$fst(
+			A3(
+				_elm_lang$core$List$foldr,
+				step,
+				{
+					ctor: '_Tuple2',
+					_0: _elm_lang$core$Native_List.fromArray(
+						[]),
+					_1: true
+				},
+				_p20));
+	};
+};
+var _elm_community$list_extra$List_Extra$splitAt = F2(
+	function (n, xs) {
+		return {
+			ctor: '_Tuple2',
+			_0: A2(_elm_lang$core$List$take, n, xs),
+			_1: A2(_elm_lang$core$List$drop, n, xs)
+		};
+	});
+var _elm_community$list_extra$List_Extra$unfoldr = F2(
+	function (f, seed) {
+		var _p21 = f(seed);
+		if (_p21.ctor === 'Nothing') {
+			return _elm_lang$core$Native_List.fromArray(
+				[]);
+		} else {
+			return A2(
+				_elm_lang$core$List_ops['::'],
+				_p21._0._0,
+				A2(_elm_community$list_extra$List_Extra$unfoldr, f, _p21._0._1));
+		}
+	});
+var _elm_community$list_extra$List_Extra$scanr1 = F2(
+	function (f, xs$) {
+		var _p22 = xs$;
+		if (_p22.ctor === '[]') {
+			return _elm_lang$core$Native_List.fromArray(
+				[]);
+		} else {
+			if (_p22._1.ctor === '[]') {
+				return _elm_lang$core$Native_List.fromArray(
+					[_p22._0]);
+			} else {
+				var _p23 = A2(_elm_community$list_extra$List_Extra$scanr1, f, _p22._1);
+				if (_p23.ctor === '::') {
+					return A2(
+						_elm_lang$core$List_ops['::'],
+						A2(f, _p22._0, _p23._0),
+						_p23);
+				} else {
+					return _elm_lang$core$Native_List.fromArray(
+						[]);
+				}
+			}
+		}
+	});
+var _elm_community$list_extra$List_Extra$scanr = F3(
+	function (f, acc, xs$) {
+		var _p24 = xs$;
+		if (_p24.ctor === '[]') {
+			return _elm_lang$core$Native_List.fromArray(
+				[acc]);
+		} else {
+			var _p25 = A3(_elm_community$list_extra$List_Extra$scanr, f, acc, _p24._1);
+			if (_p25.ctor === '::') {
+				return A2(
+					_elm_lang$core$List_ops['::'],
+					A2(f, _p24._0, _p25._0),
+					_p25);
+			} else {
+				return _elm_lang$core$Native_List.fromArray(
+					[]);
+			}
+		}
+	});
+var _elm_community$list_extra$List_Extra$scanl1 = F2(
+	function (f, xs$) {
+		var _p26 = xs$;
+		if (_p26.ctor === '[]') {
+			return _elm_lang$core$Native_List.fromArray(
+				[]);
+		} else {
+			return A3(_elm_lang$core$List$scanl, f, _p26._0, _p26._1);
+		}
+	});
+var _elm_community$list_extra$List_Extra$foldr1 = F2(
+	function (f, xs) {
+		var mf = F2(
+			function (x, m) {
+				return _elm_lang$core$Maybe$Just(
+					function () {
+						var _p27 = m;
+						if (_p27.ctor === 'Nothing') {
+							return x;
+						} else {
+							return A2(f, x, _p27._0);
+						}
+					}());
+			});
+		return A3(_elm_lang$core$List$foldr, mf, _elm_lang$core$Maybe$Nothing, xs);
+	});
+var _elm_community$list_extra$List_Extra$foldl1 = F2(
+	function (f, xs) {
+		var mf = F2(
+			function (x, m) {
+				return _elm_lang$core$Maybe$Just(
+					function () {
+						var _p28 = m;
+						if (_p28.ctor === 'Nothing') {
+							return x;
+						} else {
+							return A2(f, _p28._0, x);
+						}
+					}());
+			});
+		return A3(_elm_lang$core$List$foldl, mf, _elm_lang$core$Maybe$Nothing, xs);
+	});
+var _elm_community$list_extra$List_Extra$interweaveHelp = F3(
+	function (l1, l2, acc) {
+		interweaveHelp:
+		while (true) {
+			var _p29 = {ctor: '_Tuple2', _0: l1, _1: l2};
+			_v17_1:
+			do {
+				if (_p29._0.ctor === '::') {
+					if (_p29._1.ctor === '::') {
+						var _v18 = _p29._0._1,
+							_v19 = _p29._1._1,
+							_v20 = A2(
+							_elm_lang$core$Basics_ops['++'],
+							acc,
+							_elm_lang$core$Native_List.fromArray(
+								[_p29._0._0, _p29._1._0]));
+						l1 = _v18;
+						l2 = _v19;
+						acc = _v20;
+						continue interweaveHelp;
+					} else {
+						break _v17_1;
+					}
+				} else {
+					if (_p29._1.ctor === '[]') {
+						break _v17_1;
+					} else {
+						return A2(_elm_lang$core$Basics_ops['++'], acc, _p29._1);
+					}
+				}
+			} while(false);
+			return A2(_elm_lang$core$Basics_ops['++'], acc, _p29._0);
+		}
+	});
+var _elm_community$list_extra$List_Extra$interweave = F2(
+	function (l1, l2) {
+		return A3(
+			_elm_community$list_extra$List_Extra$interweaveHelp,
+			l1,
+			l2,
+			_elm_lang$core$Native_List.fromArray(
+				[]));
+	});
+var _elm_community$list_extra$List_Extra$permutations = function (xs$) {
+	var _p30 = xs$;
+	if (_p30.ctor === '[]') {
+		return _elm_lang$core$Native_List.fromArray(
+			[
+				_elm_lang$core$Native_List.fromArray(
+				[])
+			]);
+	} else {
+		var f = function (_p31) {
+			var _p32 = _p31;
+			return A2(
+				_elm_lang$core$List$map,
+				F2(
+					function (x, y) {
+						return A2(_elm_lang$core$List_ops['::'], x, y);
+					})(_p32._0),
+				_elm_community$list_extra$List_Extra$permutations(_p32._1));
+		};
+		return A2(
+			_elm_lang$core$List$concatMap,
+			f,
+			_elm_community$list_extra$List_Extra$select(_p30));
+	}
+};
+var _elm_community$list_extra$List_Extra$isPermutationOf = F2(
+	function (permut, xs) {
+		return A2(
+			_elm_lang$core$List$member,
+			permut,
+			_elm_community$list_extra$List_Extra$permutations(xs));
+	});
+var _elm_community$list_extra$List_Extra$subsequencesNonEmpty = function (xs) {
+	var _p33 = xs;
+	if (_p33.ctor === '[]') {
+		return _elm_lang$core$Native_List.fromArray(
+			[]);
+	} else {
+		var _p34 = _p33._0;
+		var f = F2(
+			function (ys, r) {
+				return A2(
+					_elm_lang$core$List_ops['::'],
+					ys,
+					A2(
+						_elm_lang$core$List_ops['::'],
+						A2(_elm_lang$core$List_ops['::'], _p34, ys),
+						r));
+			});
+		return A2(
+			_elm_lang$core$List_ops['::'],
+			_elm_lang$core$Native_List.fromArray(
+				[_p34]),
+			A3(
+				_elm_lang$core$List$foldr,
+				f,
+				_elm_lang$core$Native_List.fromArray(
+					[]),
+				_elm_community$list_extra$List_Extra$subsequencesNonEmpty(_p33._1)));
+	}
+};
+var _elm_community$list_extra$List_Extra$subsequences = function (xs) {
+	return A2(
+		_elm_lang$core$List_ops['::'],
+		_elm_lang$core$Native_List.fromArray(
+			[]),
+		_elm_community$list_extra$List_Extra$subsequencesNonEmpty(xs));
+};
+var _elm_community$list_extra$List_Extra$isSubsequenceOf = F2(
+	function (subseq, xs) {
+		return A2(
+			_elm_lang$core$List$member,
+			subseq,
+			_elm_community$list_extra$List_Extra$subsequences(xs));
+	});
+var _elm_community$list_extra$List_Extra$transpose = function (ll) {
+	transpose:
+	while (true) {
+		var _p35 = ll;
+		if (_p35.ctor === '[]') {
+			return _elm_lang$core$Native_List.fromArray(
+				[]);
+		} else {
+			if (_p35._0.ctor === '[]') {
+				var _v25 = _p35._1;
+				ll = _v25;
+				continue transpose;
+			} else {
+				var _p36 = _p35._1;
+				var tails = A2(_elm_lang$core$List$filterMap, _elm_lang$core$List$tail, _p36);
+				var heads = A2(_elm_lang$core$List$filterMap, _elm_lang$core$List$head, _p36);
+				return A2(
+					_elm_lang$core$List_ops['::'],
+					A2(_elm_lang$core$List_ops['::'], _p35._0._0, heads),
+					_elm_community$list_extra$List_Extra$transpose(
+						A2(_elm_lang$core$List_ops['::'], _p35._0._1, tails)));
+			}
+		}
+	}
+};
+var _elm_community$list_extra$List_Extra$intercalate = function (xs) {
+	return function (_p37) {
+		return _elm_lang$core$List$concat(
+			A2(_elm_lang$core$List$intersperse, xs, _p37));
+	};
+};
+var _elm_community$list_extra$List_Extra$removeWhen = F2(
+	function (pred, list) {
+		return A2(
+			_elm_lang$core$List$filter,
+			function (_p38) {
+				return _elm_lang$core$Basics$not(
+					pred(_p38));
+			},
+			list);
+	});
+var _elm_community$list_extra$List_Extra$removeAt = F2(
+	function (index, l) {
+		if (_elm_lang$core$Native_Utils.cmp(index, 0) < 0) {
+			return l;
+		} else {
+			var tail = _elm_lang$core$List$tail(
+				A2(_elm_lang$core$List$drop, index, l));
+			var head = A2(_elm_lang$core$List$take, index, l);
+			var _p39 = tail;
+			if (_p39.ctor === 'Nothing') {
+				return l;
+			} else {
+				return A2(_elm_lang$core$List$append, head, _p39._0);
+			}
+		}
+	});
+var _elm_community$list_extra$List_Extra$singleton = function (x) {
+	return _elm_lang$core$Native_List.fromArray(
+		[x]);
+};
+var _elm_community$list_extra$List_Extra$setAt = F3(
+	function (index, value, l) {
+		if (_elm_lang$core$Native_Utils.cmp(index, 0) < 0) {
+			return _elm_lang$core$Maybe$Nothing;
+		} else {
+			var tail = _elm_lang$core$List$tail(
+				A2(_elm_lang$core$List$drop, index, l));
+			var head = A2(_elm_lang$core$List$take, index, l);
+			var _p40 = tail;
+			if (_p40.ctor === 'Nothing') {
+				return _elm_lang$core$Maybe$Nothing;
+			} else {
+				return _elm_lang$core$Maybe$Just(
+					A2(
+						_elm_lang$core$List$append,
+						head,
+						A2(_elm_lang$core$List_ops['::'], value, _p40._0)));
+			}
+		}
+	});
+var _elm_community$list_extra$List_Extra$deleteIf = F2(
+	function (predicate, items) {
+		return A2(
+			_elm_lang$core$List$filter,
+			function (_p41) {
+				return _elm_lang$core$Basics$not(
+					predicate(_p41));
+			},
+			items);
+	});
+var _elm_community$list_extra$List_Extra$updateIfIndex = F3(
+	function (predicate, update, list) {
+		return A2(
+			_elm_lang$core$List$indexedMap,
+			F2(
+				function (i, x) {
+					return predicate(i) ? update(x) : x;
+				}),
+			list);
+	});
+var _elm_community$list_extra$List_Extra$updateAt = F3(
+	function (index, update, list) {
+		return ((_elm_lang$core$Native_Utils.cmp(index, 0) < 0) || (_elm_lang$core$Native_Utils.cmp(
+			index,
+			_elm_lang$core$List$length(list)) > -1)) ? _elm_lang$core$Maybe$Nothing : _elm_lang$core$Maybe$Just(
+			A3(
+				_elm_community$list_extra$List_Extra$updateIfIndex,
+				F2(
+					function (x, y) {
+						return _elm_lang$core$Native_Utils.eq(x, y);
+					})(index),
+				update,
+				list));
+	});
+var _elm_community$list_extra$List_Extra$updateIf = F3(
+	function (predicate, update, list) {
+		return A2(
+			_elm_lang$core$List$map,
+			function (item) {
+				return predicate(item) ? update(item) : item;
+			},
+			list);
+	});
+var _elm_community$list_extra$List_Extra$replaceIf = F3(
+	function (predicate, replacement, list) {
+		return A3(
+			_elm_community$list_extra$List_Extra$updateIf,
+			predicate,
+			_elm_lang$core$Basics$always(replacement),
+			list);
+	});
+var _elm_community$list_extra$List_Extra$findIndices = function (p) {
+	return function (_p42) {
+		return A2(
+			_elm_lang$core$List$map,
+			_elm_lang$core$Basics$fst,
+			A2(
+				_elm_lang$core$List$filter,
+				function (_p43) {
+					var _p44 = _p43;
+					return p(_p44._1);
+				},
+				A2(
+					_elm_lang$core$List$indexedMap,
+					F2(
+						function (v0, v1) {
+							return {ctor: '_Tuple2', _0: v0, _1: v1};
+						}),
+					_p42)));
+	};
+};
+var _elm_community$list_extra$List_Extra$findIndex = function (p) {
+	return function (_p45) {
+		return _elm_lang$core$List$head(
+			A2(_elm_community$list_extra$List_Extra$findIndices, p, _p45));
+	};
+};
+var _elm_community$list_extra$List_Extra$elemIndices = function (x) {
+	return _elm_community$list_extra$List_Extra$findIndices(
+		F2(
+			function (x, y) {
+				return _elm_lang$core$Native_Utils.eq(x, y);
+			})(x));
+};
+var _elm_community$list_extra$List_Extra$elemIndex = function (x) {
+	return _elm_community$list_extra$List_Extra$findIndex(
+		F2(
+			function (x, y) {
+				return _elm_lang$core$Native_Utils.eq(x, y);
+			})(x));
+};
+var _elm_community$list_extra$List_Extra$find = F2(
+	function (predicate, list) {
+		find:
+		while (true) {
+			var _p46 = list;
+			if (_p46.ctor === '[]') {
+				return _elm_lang$core$Maybe$Nothing;
+			} else {
+				var _p47 = _p46._0;
+				if (predicate(_p47)) {
+					return _elm_lang$core$Maybe$Just(_p47);
+				} else {
+					var _v30 = predicate,
+						_v31 = _p46._1;
+					predicate = _v30;
+					list = _v31;
+					continue find;
+				}
+			}
+		}
+	});
+var _elm_community$list_extra$List_Extra$notMember = function (x) {
+	return function (_p48) {
+		return _elm_lang$core$Basics$not(
+			A2(_elm_lang$core$List$member, x, _p48));
+	};
+};
+var _elm_community$list_extra$List_Extra$andThen = _elm_lang$core$Basics$flip(_elm_lang$core$List$concatMap);
+var _elm_community$list_extra$List_Extra$lift2 = F3(
+	function (f, la, lb) {
+		return A2(
+			_elm_community$list_extra$List_Extra$andThen,
+			la,
+			function (a) {
+				return A2(
+					_elm_community$list_extra$List_Extra$andThen,
+					lb,
+					function (b) {
+						return _elm_lang$core$Native_List.fromArray(
+							[
+								A2(f, a, b)
+							]);
+					});
+			});
+	});
+var _elm_community$list_extra$List_Extra$lift3 = F4(
+	function (f, la, lb, lc) {
+		return A2(
+			_elm_community$list_extra$List_Extra$andThen,
+			la,
+			function (a) {
+				return A2(
+					_elm_community$list_extra$List_Extra$andThen,
+					lb,
+					function (b) {
+						return A2(
+							_elm_community$list_extra$List_Extra$andThen,
+							lc,
+							function (c) {
+								return _elm_lang$core$Native_List.fromArray(
+									[
+										A3(f, a, b, c)
+									]);
+							});
+					});
+			});
+	});
+var _elm_community$list_extra$List_Extra$lift4 = F5(
+	function (f, la, lb, lc, ld) {
+		return A2(
+			_elm_community$list_extra$List_Extra$andThen,
+			la,
+			function (a) {
+				return A2(
+					_elm_community$list_extra$List_Extra$andThen,
+					lb,
+					function (b) {
+						return A2(
+							_elm_community$list_extra$List_Extra$andThen,
+							lc,
+							function (c) {
+								return A2(
+									_elm_community$list_extra$List_Extra$andThen,
+									ld,
+									function (d) {
+										return _elm_lang$core$Native_List.fromArray(
+											[
+												A4(f, a, b, c, d)
+											]);
+									});
+							});
+					});
+			});
+	});
+var _elm_community$list_extra$List_Extra$andMap = F2(
+	function (fl, l) {
+		return A3(
+			_elm_lang$core$List$map2,
+			F2(
+				function (x, y) {
+					return x(y);
+				}),
+			fl,
+			l);
+	});
+var _elm_community$list_extra$List_Extra$dropDuplicatesHelp = F2(
+	function (existing, remaining) {
+		dropDuplicatesHelp:
+		while (true) {
+			var _p49 = remaining;
+			if (_p49.ctor === '[]') {
+				return _elm_lang$core$Native_List.fromArray(
+					[]);
+			} else {
+				var _p51 = _p49._1;
+				var _p50 = _p49._0;
+				if (A2(_elm_lang$core$Set$member, _p50, existing)) {
+					var _v33 = existing,
+						_v34 = _p51;
+					existing = _v33;
+					remaining = _v34;
+					continue dropDuplicatesHelp;
+				} else {
+					return A2(
+						_elm_lang$core$List_ops['::'],
+						_p50,
+						A2(
+							_elm_community$list_extra$List_Extra$dropDuplicatesHelp,
+							A2(_elm_lang$core$Set$insert, _p50, existing),
+							_p51));
+				}
+			}
+		}
+	});
+var _elm_community$list_extra$List_Extra$dropDuplicates = function (list) {
+	return A2(_elm_community$list_extra$List_Extra$dropDuplicatesHelp, _elm_lang$core$Set$empty, list);
+};
+var _elm_community$list_extra$List_Extra$dropWhile = F2(
+	function (predicate, list) {
+		dropWhile:
+		while (true) {
+			var _p52 = list;
+			if (_p52.ctor === '[]') {
+				return _elm_lang$core$Native_List.fromArray(
+					[]);
+			} else {
+				if (predicate(_p52._0)) {
+					var _v36 = predicate,
+						_v37 = _p52._1;
+					predicate = _v36;
+					list = _v37;
+					continue dropWhile;
+				} else {
+					return list;
+				}
+			}
+		}
+	});
+var _elm_community$list_extra$List_Extra$takeWhile = F2(
+	function (predicate, list) {
+		var _p53 = list;
+		if (_p53.ctor === '[]') {
+			return _elm_lang$core$Native_List.fromArray(
+				[]);
+		} else {
+			var _p54 = _p53._0;
+			return predicate(_p54) ? A2(
+				_elm_lang$core$List_ops['::'],
+				_p54,
+				A2(_elm_community$list_extra$List_Extra$takeWhile, predicate, _p53._1)) : _elm_lang$core$Native_List.fromArray(
+				[]);
+		}
+	});
+var _elm_community$list_extra$List_Extra$span = F2(
+	function (p, xs) {
+		return {
+			ctor: '_Tuple2',
+			_0: A2(_elm_community$list_extra$List_Extra$takeWhile, p, xs),
+			_1: A2(_elm_community$list_extra$List_Extra$dropWhile, p, xs)
+		};
+	});
+var _elm_community$list_extra$List_Extra$break = function (p) {
+	return _elm_community$list_extra$List_Extra$span(
+		function (_p55) {
+			return _elm_lang$core$Basics$not(
+				p(_p55));
+		});
+};
+var _elm_community$list_extra$List_Extra$groupWhile = F2(
+	function (eq, xs$) {
+		var _p56 = xs$;
+		if (_p56.ctor === '[]') {
+			return _elm_lang$core$Native_List.fromArray(
+				[]);
+		} else {
+			var _p58 = _p56._0;
+			var _p57 = A2(
+				_elm_community$list_extra$List_Extra$span,
+				eq(_p58),
+				_p56._1);
+			var ys = _p57._0;
+			var zs = _p57._1;
+			return A2(
+				_elm_lang$core$List_ops['::'],
+				A2(_elm_lang$core$List_ops['::'], _p58, ys),
+				A2(_elm_community$list_extra$List_Extra$groupWhile, eq, zs));
+		}
+	});
+var _elm_community$list_extra$List_Extra$group = _elm_community$list_extra$List_Extra$groupWhile(
+	F2(
+		function (x, y) {
+			return _elm_lang$core$Native_Utils.eq(x, y);
+		}));
+var _elm_community$list_extra$List_Extra$minimumBy = F2(
+	function (f, ls) {
+		var minBy = F2(
+			function (x, _p59) {
+				var _p60 = _p59;
+				var _p61 = _p60._1;
+				var fx = f(x);
+				return (_elm_lang$core$Native_Utils.cmp(fx, _p61) < 0) ? {ctor: '_Tuple2', _0: x, _1: fx} : {ctor: '_Tuple2', _0: _p60._0, _1: _p61};
+			});
+		var _p62 = ls;
+		if (_p62.ctor === '::') {
+			if (_p62._1.ctor === '[]') {
+				return _elm_lang$core$Maybe$Just(_p62._0);
+			} else {
+				var _p63 = _p62._0;
+				return _elm_lang$core$Maybe$Just(
+					_elm_lang$core$Basics$fst(
+						A3(
+							_elm_lang$core$List$foldl,
+							minBy,
+							{
+								ctor: '_Tuple2',
+								_0: _p63,
+								_1: f(_p63)
+							},
+							_p62._1)));
+			}
+		} else {
+			return _elm_lang$core$Maybe$Nothing;
+		}
+	});
+var _elm_community$list_extra$List_Extra$maximumBy = F2(
+	function (f, ls) {
+		var maxBy = F2(
+			function (x, _p64) {
+				var _p65 = _p64;
+				var _p66 = _p65._1;
+				var fx = f(x);
+				return (_elm_lang$core$Native_Utils.cmp(fx, _p66) > 0) ? {ctor: '_Tuple2', _0: x, _1: fx} : {ctor: '_Tuple2', _0: _p65._0, _1: _p66};
+			});
+		var _p67 = ls;
+		if (_p67.ctor === '::') {
+			if (_p67._1.ctor === '[]') {
+				return _elm_lang$core$Maybe$Just(_p67._0);
+			} else {
+				var _p68 = _p67._0;
+				return _elm_lang$core$Maybe$Just(
+					_elm_lang$core$Basics$fst(
+						A3(
+							_elm_lang$core$List$foldl,
+							maxBy,
+							{
+								ctor: '_Tuple2',
+								_0: _p68,
+								_1: f(_p68)
+							},
+							_p67._1)));
+			}
+		} else {
+			return _elm_lang$core$Maybe$Nothing;
+		}
+	});
+var _elm_community$list_extra$List_Extra$uncons = function (xs) {
+	var _p69 = xs;
+	if (_p69.ctor === '[]') {
+		return _elm_lang$core$Maybe$Nothing;
+	} else {
+		return _elm_lang$core$Maybe$Just(
+			{ctor: '_Tuple2', _0: _p69._0, _1: _p69._1});
+	}
+};
+var _elm_community$list_extra$List_Extra$iterate = F2(
+	function (f, x) {
+		var _p70 = f(x);
+		if (_p70.ctor === 'Just') {
+			return A2(
+				_elm_lang$core$List_ops['::'],
+				x,
+				A2(_elm_community$list_extra$List_Extra$iterate, f, _p70._0));
+		} else {
+			return _elm_lang$core$Native_List.fromArray(
+				[x]);
+		}
+	});
+var _elm_community$list_extra$List_Extra$getAt = F2(
+	function (idx, xs) {
+		return (_elm_lang$core$Native_Utils.cmp(idx, 0) < 0) ? _elm_lang$core$Maybe$Nothing : _elm_lang$core$List$head(
+			A2(_elm_lang$core$List$drop, idx, xs));
+	});
+var _elm_community$list_extra$List_Extra_ops = _elm_community$list_extra$List_Extra_ops || {};
+_elm_community$list_extra$List_Extra_ops['!!'] = _elm_lang$core$Basics$flip(_elm_community$list_extra$List_Extra$getAt);
+var _elm_community$list_extra$List_Extra$init = function () {
+	var maybe = F2(
+		function (d, f) {
+			return function (_p71) {
+				return A2(
+					_elm_lang$core$Maybe$withDefault,
+					d,
+					A2(_elm_lang$core$Maybe$map, f, _p71));
+			};
+		});
+	return A2(
+		_elm_lang$core$List$foldr,
+		function (_p72) {
+			return A2(
+				F2(
+					function (x, y) {
+						return function (_p73) {
+							return x(
+								y(_p73));
+						};
+					}),
+				_elm_lang$core$Maybe$Just,
+				A2(
+					maybe,
+					_elm_lang$core$Native_List.fromArray(
+						[]),
+					F2(
+						function (x, y) {
+							return A2(_elm_lang$core$List_ops['::'], x, y);
+						})(_p72)));
+		},
+		_elm_lang$core$Maybe$Nothing);
+}();
+var _elm_community$list_extra$List_Extra$last = _elm_community$list_extra$List_Extra$foldl1(
+	_elm_lang$core$Basics$flip(_elm_lang$core$Basics$always));
+var _elm_lang$core$Process$kill = _elm_lang$core$Native_Scheduler.kill;
+var _elm_lang$core$Process$sleep = _elm_lang$core$Native_Scheduler.sleep;
+var _elm_lang$core$Process$spawn = _elm_lang$core$Native_Scheduler.spawn;
 var _elm_lang$dom$Native_Dom = function() {
 
 function on(node)
@@ -6529,24 +7666,74 @@ var _user$project$Types$Velocity = F2(
 	function (a, b) {
 		return {x: a, y: b};
 	});
+var _user$project$Types$Boundary = F4(
+	function (a, b, c, d) {
+		return {x1: a, x2: b, y1: c, y2: d};
+	});
+var _user$project$Types$Weapon = F2(
+	function (a, b) {
+		return {weaponType: a, force: b};
+	});
 var _user$project$Types$Sphere = F8(
 	function (a, b, c, d, e, f, g, h) {
-		return {id: a, position: b, mass: c, diameter: d, velocity: e, aliveFrames: f, merged: g, scale: h};
+		return {id: a, position: b, mass: c, diameter: d, velocity: e, aliveFrames: f, scale: g, merged: h};
 	});
-var _user$project$Types$World = F8(
-	function (a, b, c, d, e, f, g, h) {
-		return {spheres: a, gravitationalConstant: b, sphereLimit: c, players: d, state: e, graphicSettings: f, leftSideLine: g, rightSideLine: h};
-	});
+var _user$project$Types$World = function (a) {
+	return function (b) {
+		return function (c) {
+			return function (d) {
+				return function (e) {
+					return function (f) {
+						return function (g) {
+							return function (h) {
+								return function (i) {
+									return function (j) {
+										return {spheres: a, sphereLimit: b, players: c, state: d, graphicSettings: e, leftSideLine: f, rightSideLine: g, physicsSettings: h, innerContainer: i, outerContainer: j};
+									};
+								};
+							};
+						};
+					};
+				};
+			};
+		};
+	};
+};
 var _user$project$Types$Constant = function (a) {
 	return {size: a};
 };
-var _user$project$Types$Player = F9(
-	function (a, b, c, d, e, f, g, h, i) {
-		return {number: a, position: b, side: c, score: d, size: e, velocity: f, upAction: g, downAction: h, mass: i};
-	});
+var _user$project$Types$Player = function (a) {
+	return function (b) {
+		return function (c) {
+			return function (d) {
+				return function (e) {
+					return function (f) {
+						return function (g) {
+							return function (h) {
+								return function (i) {
+									return function (j) {
+										return function (k) {
+											return function (l) {
+												return {number: a, position: b, side: c, score: d, size: e, velocity: f, upAction: g, downAction: h, mass: i, selectedWeapon: j, ammo: k, weapons: l};
+											};
+										};
+									};
+								};
+							};
+						};
+					};
+				};
+			};
+		};
+	};
+};
 var _user$project$Types$GraphicSettings = F2(
 	function (a, b) {
 		return {graphicWidth: a, graphicHeight: b};
+	});
+var _user$project$Types$PhysicsSettings = F3(
+	function (a, b, c) {
+		return {gravitationalConstant: a, boundaryDampner: b, maxSphereVelocity: c};
 	});
 var _user$project$Types$SideLine = F5(
 	function (a, b, c, d, e) {
@@ -6567,6 +7754,10 @@ var _user$project$Types$Click = function (a) {
 var _user$project$Types$Tick = function (a) {
 	return {ctor: 'Tick', _0: a};
 };
+var _user$project$Types$Bouncer = {ctor: 'Bouncer'};
+var _user$project$Types$Field = {ctor: 'Field'};
+var _user$project$Types$Shotgun = {ctor: 'Shotgun'};
+var _user$project$Types$Normal = {ctor: 'Normal'};
 var _user$project$Types$Right = {ctor: 'Right'};
 var _user$project$Types$Left = {ctor: 'Left'};
 var _user$project$Types$NotPressed = {ctor: 'NotPressed'};
@@ -6577,9 +7768,6 @@ var _user$project$Types$Pause = {ctor: 'Pause'};
 var _user$project$Types$Play = {ctor: 'Play'};
 var _user$project$Types$Two = {ctor: 'Two'};
 var _user$project$Types$One = {ctor: 'One'};
-var _user$project$Update$square = function (n) {
-	return Math.pow(n, 2);
-};
 var _user$project$Update$removeMergedSpheres = function (spheres) {
 	return A2(
 		_elm_lang$core$List$filter,
@@ -6587,6 +7775,24 @@ var _user$project$Update$removeMergedSpheres = function (spheres) {
 			return _elm_lang$core$Native_Utils.eq(e.merged, false);
 		},
 		spheres);
+};
+var _user$project$Update$markAsMerged = function (sphere) {
+	return _elm_lang$core$Native_Utils.update(
+		sphere,
+		{merged: true});
+};
+var _user$project$Update$groupFunction = F2(
+	function (func, objects) {
+		return objects;
+	});
+var _user$project$Update$filterNothings = function (list) {
+	return A2(_elm_lang$core$List$filterMap, _elm_lang$core$Basics$identity, list);
+};
+var _user$project$Update$square = function (n) {
+	return Math.pow(n, 2);
+};
+var _user$project$Update$sphereRadius = function (sphere) {
+	return sphere.diameter / 2;
 };
 var _user$project$Update$calculateDiameter = F2(
 	function (scale, mass) {
@@ -6624,8 +7830,16 @@ var _user$project$Update$sumX = function (forces) {
 			},
 			forces));
 };
-var _user$project$Update$updateVelocityForForces = F3(
-	function (velocity, mass, forces) {
+var _user$project$Update$limitSphereVelocity = F2(
+	function (settings, velocity) {
+		return A3(
+			_elm_lang$core$Basics$clamp,
+			_elm_lang$core$Basics$negate(settings.maxSphereVelocity),
+			settings.maxSphereVelocity,
+			velocity);
+	});
+var _user$project$Update$updateVelocityForForces = F4(
+	function (settings, velocity, mass, forces) {
 		return _elm_lang$core$Native_Utils.update(
 			velocity,
 			{
@@ -6633,18 +7847,28 @@ var _user$project$Update$updateVelocityForForces = F3(
 				y: velocity.y + (_user$project$Update$sumY(forces) / mass)
 			});
 	});
-var _user$project$Update$applyForcesToObject = F2(
-	function (sphere, forces) {
+var _user$project$Update$applyForcesToObject = F3(
+	function (settings, sphere, forces) {
 		return _elm_lang$core$Native_Utils.update(
 			sphere,
 			{
-				velocity: A3(_user$project$Update$updateVelocityForForces, sphere.velocity, sphere.mass.size, forces)
+				velocity: A4(_user$project$Update$updateVelocityForForces, settings, sphere.velocity, sphere.mass.size, forces)
 			});
 	});
 var _user$project$Update$euclideanDistance = F2(
 	function (positionA, positionB) {
 		return _elm_lang$core$Basics$sqrt(
 			_user$project$Update$square(positionB.x - positionA.x) + _user$project$Update$square(positionB.y - positionA.y));
+	});
+var _user$project$Update$hasCollided = F2(
+	function (sphereA, sphereB) {
+		return A2(
+			F2(
+				function (x, y) {
+					return _elm_lang$core$Native_Utils.cmp(x, y) < 0;
+				}),
+			A2(_user$project$Update$euclideanDistance, sphereA.position, sphereB.position),
+			_user$project$Update$sphereRadius(sphereA) + _user$project$Update$sphereRadius(sphereB));
 	});
 var _user$project$Update$collidedSpheres = F2(
 	function (sphere, otherSpheres) {
@@ -6671,14 +7895,15 @@ var _user$project$Update$calculateGravitation = F4(
 		return ((_elm_lang$core$Native_Utils.cmp(distance, sphereA.diameter) < 0) && (_elm_lang$core$Native_Utils.cmp(distance, sphereB.diameter) < 0)) ? _user$project$Update$emptyForce : {x: (dt * force.size) * ((sphereA.position.x - sphereB.position.x) / distance), y: (dt * force.size) * ((sphereA.position.y - sphereB.position.y) / distance)};
 	});
 var _user$project$Update$applyGravitationForAll = F4(
-	function (gravConst, dt, sphereA, spheres) {
-		return A2(
+	function (settings, dt, sphereA, spheres) {
+		return A3(
 			_user$project$Update$applyForcesToObject,
+			settings,
 			sphereA,
 			A2(
 				_elm_lang$core$List$map,
 				function (s) {
-					return A4(_user$project$Update$calculateGravitation, gravConst, dt, sphereA, s);
+					return A4(_user$project$Update$calculateGravitation, settings.gravitationalConstant, dt, sphereA, s);
 				},
 				A2(
 					_elm_lang$core$List$filter,
@@ -6750,11 +7975,6 @@ var _user$project$Update$sumMass = F2(
 			massA,
 			{size: massA.size + massB.size});
 	});
-var _user$project$Update$markAsMerged = function (sphere) {
-	return _elm_lang$core$Native_Utils.update(
-		sphere,
-		{merged: true});
-};
 var _user$project$Update$mergeSphere = F2(
 	function (sphereA, sphereB) {
 		var sphereBPost = _elm_lang$core$Native_Utils.update(
@@ -6786,16 +8006,11 @@ var _user$project$Update$mergeSpheres = F2(
 			spheresCollided) || A2(
 			_elm_lang$core$List$any,
 			function (f) {
-				return (_elm_lang$core$Native_Utils.cmp(f.aliveFrames, testSphere.aliveFrames) > 0) && _elm_lang$core$Native_Utils.eq(f.mass.size, testSphere.mass.size);
+				return _elm_lang$core$Native_Utils.eq(f.mass.size, testSphere.mass.size) && (_elm_lang$core$Native_Utils.cmp(f.aliveFrames, testSphere.aliveFrames) > 0);
 			},
 			spheresCollided)) ? _user$project$Update$markAsMerged(testSphere) : A3(_elm_lang$core$List$foldl, _user$project$Update$mergeSphere, testSphere, spheresCollided));
 	});
-var _user$project$Update$collided = F2(
-	function (sphereA, sphereB) {
-		var distance = A2(_user$project$Update$euclideanDistance, sphereA.position, sphereB.position);
-		return (_elm_lang$core$Native_Utils.cmp(distance, sphereA.diameter) < 0) && (_elm_lang$core$Native_Utils.cmp(distance, sphereB.diameter) < 0);
-	});
-var _user$project$Update$detectAndMergeCollisions = function (spheres) {
+var _user$project$Update$applySphereCollisions = function (spheres) {
 	return _user$project$Update$removeMergedSpheres(
 		A2(
 			_elm_lang$core$List$map,
@@ -6812,14 +8027,177 @@ var _user$project$Update$detectAndMergeCollisions = function (spheres) {
 			},
 			spheres));
 };
-var _user$project$Update$updatePlayerPositions = function (players) {
-	return A2(
-		_elm_lang$core$List$map,
-		function (e) {
-			return _user$project$Update$updatePlayerPosistion(e);
-		},
-		players);
+var _user$project$Update$playerOutOfBounds = F2(
+	function (world, player) {
+		return (_elm_lang$core$Native_Utils.cmp(player.position.y, world.innerContainer.y1) < 0) || (_elm_lang$core$Native_Utils.cmp(player.position.y + player.size, world.innerContainer.y2) > 0);
+	});
+var _user$project$Update$limitPlayerBoundary = F2(
+	function (world, player) {
+		return A2(_user$project$Update$playerOutOfBounds, world, player) ? _elm_lang$core$Native_Utils.update(
+			player,
+			{
+				velocity: {x: 0, y: 0},
+				position: {
+					x: player.position.x,
+					y: (_elm_lang$core$Native_Utils.cmp(player.position.y, world.innerContainer.y2 - player.size) > 0) ? (world.innerContainer.y2 - player.size) : world.innerContainer.y1
+				}
+			}) : player;
+	});
+var _user$project$Update$updatePlayerPositions = F2(
+	function (world, players) {
+		return A2(
+			_elm_lang$core$List$map,
+			function (e) {
+				return _user$project$Update$updatePlayerPosistion(e);
+			},
+			A2(
+				_elm_lang$core$List$map,
+				function (e) {
+					return A2(_user$project$Update$limitPlayerBoundary, world, e);
+				},
+				players));
+	});
+var _user$project$Update$makeNegative = function (x) {
+	return _elm_lang$core$Basics$negate(
+		_elm_lang$core$Basics$abs(x));
 };
+var _user$project$Update$makePositive = function (x) {
+	return _elm_lang$core$Basics$abs(x);
+};
+var _user$project$Update$applyVerticalBoundaryCollisions = F2(
+	function (sphere, world) {
+		return (_elm_lang$core$Native_Utils.cmp(
+			sphere.position.x - _user$project$Update$sphereRadius(sphere),
+			world.leftSideLine.x2) < 0) ? _elm_lang$core$Native_Utils.update(
+			sphere,
+			{
+				velocity: {
+					x: _user$project$Update$makePositive(sphere.velocity.x),
+					y: sphere.velocity.y
+				}
+			}) : ((_elm_lang$core$Native_Utils.cmp(
+			sphere.position.x + _user$project$Update$sphereRadius(sphere),
+			world.rightSideLine.x1) > 0) ? _elm_lang$core$Native_Utils.update(
+			sphere,
+			{
+				velocity: {
+					x: _user$project$Update$makeNegative(sphere.velocity.x),
+					y: sphere.velocity.y
+				}
+			}) : sphere);
+	});
+var _user$project$Update$applyHorizontalBoundaryCollisions = F2(
+	function (sphere, world) {
+		return (_elm_lang$core$Native_Utils.cmp(
+			sphere.position.y - _user$project$Update$sphereRadius(sphere),
+			world.leftSideLine.y1) < 0) ? _elm_lang$core$Native_Utils.update(
+			sphere,
+			{
+				velocity: {
+					x: sphere.velocity.x,
+					y: _user$project$Update$makePositive(sphere.velocity.y)
+				}
+			}) : ((_elm_lang$core$Native_Utils.cmp(
+			sphere.position.y + _user$project$Update$sphereRadius(sphere),
+			world.leftSideLine.y2) > 0) ? _elm_lang$core$Native_Utils.update(
+			sphere,
+			{
+				velocity: {
+					x: sphere.velocity.x,
+					y: _user$project$Update$makeNegative(sphere.velocity.y)
+				}
+			}) : sphere);
+	});
+var _user$project$Update$applyBoundaryCollisions = F2(
+	function (world, spheres) {
+		return A2(
+			_elm_lang$core$List$map,
+			function (e) {
+				return A2(
+					_user$project$Update$applyVerticalBoundaryCollisions,
+					A2(_user$project$Update$applyHorizontalBoundaryCollisions, e, world),
+					world);
+			},
+			spheres);
+	});
+var _user$project$Update$collidedWithPaddle = F3(
+	function (world, sphere, player) {
+		var _p0 = player;
+		if (_p0.ctor === 'Nothing') {
+			return false;
+		} else {
+			var _p1 = _p0._0.side;
+			if (_p1.ctor === 'Left') {
+				return _elm_lang$core$Native_Utils.cmp(
+					sphere.position.x - _user$project$Update$sphereRadius(sphere),
+					world.leftSideLine.x2) < 0;
+			} else {
+				return _elm_lang$core$Native_Utils.cmp(
+					sphere.position.x - _user$project$Update$sphereRadius(sphere),
+					world.rightSideLine.x1) > 0;
+			}
+		}
+	});
+var _user$project$Update$findPlayer = F2(
+	function (side, players) {
+		return _elm_lang$core$List$head(
+			A2(
+				_elm_lang$core$List$filter,
+				function (e) {
+					return _elm_lang$core$Native_Utils.eq(e.side, side);
+				},
+				players));
+	});
+var _user$project$Update$getPaddleCollidePosition = F3(
+	function (sphere, world, side) {
+		var _p2 = side;
+		if (_p2.ctor === 'Left') {
+			return {
+				x: world.leftSideLine.x2 + _user$project$Update$sphereRadius(sphere),
+				y: sphere.position.y
+			};
+		} else {
+			return {
+				x: world.rightSideLine.x1 - _user$project$Update$sphereRadius(sphere),
+				y: sphere.position.y
+			};
+		}
+	});
+var _user$project$Update$applyPaddleCollision = F2(
+	function (sphere, world) {
+		return A3(
+			_user$project$Update$collidedWithPaddle,
+			world,
+			sphere,
+			A2(_user$project$Update$findPlayer, _user$project$Types$Left, world.players)) ? _elm_lang$core$Native_Utils.update(
+			sphere,
+			{
+				velocity: {
+					x: _user$project$Update$makePositive(sphere.velocity.x),
+					y: sphere.velocity.y
+				}
+			}) : (A3(
+			_user$project$Update$collidedWithPaddle,
+			world,
+			sphere,
+			A2(_user$project$Update$findPlayer, _user$project$Types$Right, world.players)) ? _elm_lang$core$Native_Utils.update(
+			sphere,
+			{
+				velocity: {
+					x: _user$project$Update$makeNegative(sphere.velocity.x),
+					y: sphere.velocity.y
+				}
+			}) : sphere);
+	});
+var _user$project$Update$applyPaddleCollisions = F2(
+	function (world, spheres) {
+		return A2(
+			_elm_lang$core$List$map,
+			function (e) {
+				return A2(_user$project$Update$applyPaddleCollision, e, world);
+			},
+			spheres);
+	});
 var _user$project$Update$updateSpherePositions = function (spheres) {
 	return A2(
 		_elm_lang$core$List$map,
@@ -6834,16 +8212,16 @@ var _user$project$Update$applyPlayerMovementForce = F2(
 		var dragPercentage = 0.3;
 		var acceleration = 0.2;
 		var upVelocity = function () {
-			var _p0 = player.upAction;
-			if (_p0.ctor === 'Pressed') {
+			var _p3 = player.upAction;
+			if (_p3.ctor === 'Pressed') {
 				return player.velocity.y - acceleration;
 			} else {
 				return player.velocity.y * dragPercentage;
 			}
 		}();
 		var downVelocity = function () {
-			var _p1 = player.downAction;
-			if (_p1.ctor === 'Pressed') {
+			var _p4 = player.downAction;
+			if (_p4.ctor === 'Pressed') {
 				return player.velocity.y + acceleration;
 			} else {
 				return player.velocity.y * dragPercentage;
@@ -6872,11 +8250,11 @@ var _user$project$Update$applyPlayerForces = F2(
 			players);
 	});
 var _user$project$Update$applyForces = F3(
-	function (gravConst, dt, spheres) {
+	function (settings, dt, spheres) {
 		return A2(
 			_elm_lang$core$List$map,
 			function (e) {
-				return A4(_user$project$Update$applyGravitationForAll, gravConst, dt, e, spheres);
+				return A4(_user$project$Update$applyGravitationForAll, settings, dt, e, spheres);
 			},
 			spheres);
 	});
@@ -6911,13 +8289,26 @@ var _user$project$Update$applyPhysics = F2(
 			world,
 			{
 				spheres: _user$project$Update$incrementLifetime(
-					_user$project$Update$detectAndMergeCollisions(
-						_user$project$Update$updateSpherePositions(
-							A3(_user$project$Update$applyForces, world.gravitationalConstant, dt, world.spheres)))),
-				players: _user$project$Update$updatePlayerPositions(
+					A2(
+						_user$project$Update$applyPaddleCollisions,
+						world,
+						_user$project$Update$applySphereCollisions(
+							_user$project$Update$updateSpherePositions(
+								A2(
+									_user$project$Update$applyBoundaryCollisions,
+									world,
+									A3(_user$project$Update$applyForces, world.physicsSettings, dt, world.spheres)))))),
+				players: A2(
+					_user$project$Update$updatePlayerPositions,
+					world,
 					A2(_user$project$Update$applyPlayerForces, dt, world.players))
 			});
 	});
+var _user$project$Update$applyScoring = function (world) {
+	return _elm_lang$core$Native_Utils.update(
+		world,
+		{spheres: world.spheres, players: world.players});
+};
 var _user$project$Update$createSphere = F3(
 	function (position, initialMass, velocity) {
 		var scale = 5;
@@ -6928,23 +8319,36 @@ var _user$project$Update$createSphere = F3(
 			diameter: A2(_user$project$Update$calculateDiameter, scale, initialMass.size),
 			velocity: velocity,
 			aliveFrames: 0,
-			merged: false,
-			scale: scale
+			scale: scale,
+			merged: false
 		};
 	});
-var _user$project$Update$caclulateShotVelocity = function (player) {
-	var velocityDampnerY = 0.1;
-	var velocityX = player.mass.size * 0.1;
+var _user$project$Update$caclulateShotPosition = function (player) {
 	return {
 		x: function () {
-			var _p2 = player.side;
-			if (_p2.ctor === 'Left') {
-				return velocityX;
+			var _p5 = player.side;
+			if (_p5.ctor === 'Left') {
+				return player.position.x;
 			} else {
-				return _elm_lang$core$Basics$negate(velocityX);
+				return player.position.x;
 			}
 		}(),
-		y: player.velocity.y * velocityDampnerY
+		y: player.position.y + (player.size / 2)
+	};
+};
+var _user$project$Update$caclulateShotVelocity = function (player) {
+	var velocityMultiplierX = 0.4;
+	var velocityMultiplierY = 8.0e-2;
+	return {
+		x: function () {
+			var _p6 = player.side;
+			if (_p6.ctor === 'Left') {
+				return player.mass.size * velocityMultiplierX;
+			} else {
+				return _elm_lang$core$Basics$negate(player.mass.size * velocityMultiplierX);
+			}
+		}(),
+		y: player.velocity.y * velocityMultiplierY
 	};
 };
 var _user$project$Update$shootBall = F2(
@@ -6959,7 +8363,7 @@ var _user$project$Update$shootBall = F2(
 						[
 							A3(
 							_user$project$Update$createSphere,
-							{x: player.position.x, y: player.position.y},
+							_user$project$Update$caclulateShotPosition(player),
 							{size: 10},
 							_user$project$Update$caclulateShotVelocity(player))
 						]))
@@ -6967,23 +8371,23 @@ var _user$project$Update$shootBall = F2(
 	});
 var _user$project$Update$attemptShot = F2(
 	function (world, side) {
-		var _p3 = _elm_lang$core$List$head(
+		var _p7 = _elm_lang$core$List$head(
 			A2(
 				_elm_lang$core$List$filter,
 				function (p) {
 					return _elm_lang$core$Native_Utils.eq(p.side, side);
 				},
 				world.players));
-		if (_p3.ctor === 'Nothing') {
+		if (_p7.ctor === 'Nothing') {
 			return world;
 		} else {
-			return A2(_user$project$Update$shootBall, _p3._0, world);
+			return A2(_user$project$Update$shootBall, _p7._0, world);
 		}
 	});
 var _user$project$Update$updatePlayerAction = F3(
 	function (player, keyboardAction, direction) {
-		var _p4 = direction;
-		if (_p4.ctor === 'Up') {
+		var _p8 = direction;
+		if (_p8.ctor === 'Up') {
 			return _elm_lang$core$Native_Utils.update(
 				player,
 				{upAction: keyboardAction});
@@ -7008,8 +8412,8 @@ var _user$project$Update$updatePlayerActions = F4(
 	});
 var _user$project$Update$applyPlayerKeyChange = F3(
 	function (keyCode, action, world) {
-		var _p5 = keyCode;
-		switch (_p5) {
+		var _p9 = keyCode;
+		switch (_p9) {
 			case 38:
 				return A4(_user$project$Update$updatePlayerActions, world, _user$project$Types$Right, action, _user$project$Types$Up);
 			case 40:
@@ -7019,15 +8423,15 @@ var _user$project$Update$applyPlayerKeyChange = F3(
 			case 83:
 				return A4(_user$project$Update$updatePlayerActions, world, _user$project$Types$Left, action, _user$project$Types$Down);
 			case 68:
-				var _p6 = action;
-				if (_p6.ctor === 'Pressed') {
+				var _p10 = action;
+				if (_p10.ctor === 'Pressed') {
 					return A2(_user$project$Update$attemptShot, world, _user$project$Types$Left);
 				} else {
 					return world;
 				}
 			case 37:
-				var _p7 = action;
-				if (_p7.ctor === 'Pressed') {
+				var _p11 = action;
+				if (_p11.ctor === 'Pressed') {
 					return A2(_user$project$Update$attemptShot, world, _user$project$Types$Right);
 				} else {
 					return world;
@@ -7038,12 +8442,13 @@ var _user$project$Update$applyPlayerKeyChange = F3(
 	});
 var _user$project$Update$update = F2(
 	function (msg, world) {
-		var _p8 = msg;
-		switch (_p8.ctor) {
+		var _p12 = msg;
+		switch (_p12.ctor) {
 			case 'Tick':
 				return {
 					ctor: '_Tuple2',
-					_0: A2(_user$project$Update$applyPhysics, _p8._0, world),
+					_0: _user$project$Update$applyScoring(
+						A2(_user$project$Update$applyPhysics, _p12._0, world)),
 					_1: _elm_lang$core$Platform_Cmd$none
 				};
 			case 'Click':
@@ -7053,13 +8458,13 @@ var _user$project$Update$update = F2(
 			case 'KeyDown':
 				return {
 					ctor: '_Tuple2',
-					_0: A3(_user$project$Update$applyPlayerKeyChange, _p8._0, _user$project$Types$Pressed, world),
+					_0: A3(_user$project$Update$applyPlayerKeyChange, _p12._0, _user$project$Types$Pressed, world),
 					_1: _elm_lang$core$Platform_Cmd$none
 				};
 			default:
 				return {
 					ctor: '_Tuple2',
-					_0: A3(_user$project$Update$applyPlayerKeyChange, _p8._0, _user$project$Types$NotPressed, world),
+					_0: A3(_user$project$Update$applyPlayerKeyChange, _p12._0, _user$project$Types$NotPressed, world),
 					_1: _elm_lang$core$Platform_Cmd$none
 				};
 		}

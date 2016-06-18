@@ -13,7 +13,7 @@ type Msg
     | KeyUp Int
 
 
-type Weapon
+type WeaponType
     = Normal
     | Shotgun
     | Field
@@ -86,6 +86,11 @@ type alias Boundary =
     , y2 : Float
     }
 
+type alias Weapon =
+    { weaponType : WeaponType
+    , force : Force
+    }
+
 
 type alias Sphere =
     { id : String
@@ -95,6 +100,7 @@ type alias Sphere =
     , velocity : Velocity
     , aliveFrames : Float
     , scale : Float
+    , merged : Bool
     }
 
 
@@ -107,7 +113,8 @@ type alias World =
     , leftSideLine : SideLine
     , rightSideLine : SideLine
     , physicsSettings : PhysicsSettings
-    , outerBoundary : Boundary
+    , innerContainer : Boundary
+    , outerContainer : Boundary
     }
 
 
@@ -126,8 +133,9 @@ type alias Player =
     , upAction : KeyboardKeyAction
     , downAction : KeyboardKeyAction
     , mass : Mass
-    , selectedWeapon : Weapon
+    , selectedWeapon : WeaponType
     , ammo : Float
+    , weapons : List(Weapon)
     }
 
 
@@ -140,6 +148,7 @@ type alias GraphicSettings =
 type alias PhysicsSettings =
     { gravitationalConstant : Constant
     , boundaryDampner : Float
+    , maxSphereVelocity : Float
     }
 
 

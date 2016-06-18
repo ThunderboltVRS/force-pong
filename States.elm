@@ -15,40 +15,67 @@ defaultWorld =
       , sphereLimit = { size = 40 }
       , players =
             [ { number = One
-              , position = { x = leftLine, y = graphicHeight / 2 }
+              , position = { x = (playerSideLinePosistion Left playerWidth), y = graphicHeight / 2 }
               , side = Left
-              , score = 100
-              , size = 100
+              , score = 30
+              , size = 60
               , velocity = { x = 0, y = 0 }
               , upAction = NotPressed
               , downAction = NotPressed
               , mass = { size = 10 }
               , selectedWeapon = Normal
               , ammo = 10
+              , weapons = [{weaponType = Normal, force = {x =1, y=0}}]
               }
             , { number = Two
-              , position = { x = rightLine, y = graphicHeight / 2 }
+              , position = { x = (playerSideLinePosistion Right playerWidth), y = graphicHeight / 2 }
               , side = Right
-              , score = 0
-              , size = 100
+              , score = 90
+              , size = 60
               , velocity = { x = 0, y = 0 }
               , upAction = NotPressed
               , downAction = NotPressed
               , mass = { size = 10 }
               , selectedWeapon = Normal
               , ammo = 10
+              , weapons = [{weaponType = Normal, force = {x =1, y=0}}]
               }
             ]
       , state = Play
-      , graphicSettings = { graphicWidth = graphicWidth, graphicHeight = graphicHeight }
-      , leftSideLine = { side = Left, x1 = sideLinePosistion Left, x2 = sideLinePosistion Left, y1 = sideLineStartY, y2 = sideLineEndY }
-      , rightSideLine = { side = Right, x1 = sideLinePosistion Right, x2 = sideLinePosistion Right, y1 = sideLineStartY, y2 = sideLineEndY }
-      , physicsSettings = { gravitationalConstant = { size = 0.4 }, boundaryDampner = 0.95 }
-      , outerBoundary =
-            { x1 = containerBorder + containerOffset + containerBorder
-            , x2 = graphicWidth - (containerBorder * 2) - (containerOffset * 2)
-            , y1 = containerBorder + containerOffset + containerBorder
-            , y2 = graphicHeight - (containerBorder * 2) - (containerOffset * 2)
+      , graphicSettings = 
+      { graphicWidth = graphicWidth
+      , graphicHeight = graphicHeight
+      }
+      , leftSideLine =
+            { side = Left
+            , x1 = sideLinePosistion Left
+            , x2 = sideLinePosistion Left
+            , y1 = innerContainerY1
+            , y2 = innerContainerY2
+            }
+      , rightSideLine =
+            { side = Right
+            , x1 = sideLinePosistion Right
+            , x2 = sideLinePosistion Right
+            , y1 = innerContainerY1
+            , y2 = innerContainerY2
+            }
+      , physicsSettings =
+            { gravitationalConstant = { size = 10 }
+            , boundaryDampner = 0.95
+            , maxSphereVelocity = 10
+            }
+      , innerContainer =
+            { x1 = innerContainerX1
+            , x2 = innerContainerX2
+            , y1 = innerContainerY1
+            , y2 = innerContainerY2
+            }
+      , outerContainer =
+            { x1 = outerContainerX1
+            , x2 = outerContainerX2
+            , y1 = outerContainerY1
+            , y2 = outerContainerY2
             }
       }
     , Cmd.none

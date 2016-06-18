@@ -2,55 +2,105 @@ module Config exposing (..)
 
 import Types exposing (..)
 
+
 playerWidth : number
 playerWidth =
     5
+
 
 playerHeightPercent : number
 playerHeightPercent =
     10
 
+
 containerOffset : number
 containerOffset =
-    10
+    20
+
 
 containerBorder : number
 containerBorder =
-    5
+    6
+
 
 sideOffset : number
 sideOffset =
     10
 
+
 graphicWidth : number
 graphicWidth =
     1000
+
 
 graphicHeight : number
 graphicHeight =
     600
 
-leftLine : number
-leftLine =
-    20
 
-rightLine : number
-rightLine =
-    graphicWidth - leftLine
+sideLineOffset : Float
+sideLineOffset =
+    40
+
+sideLineWidth : Float
+sideLineWidth =
+    1
 
 sideLinePosistion : Side -> Float
 sideLinePosistion side =
     case side of
         Left ->
-            sideOffset + containerOffset + containerBorder
+            innerContainerX1 + sideLineOffset
 
         Right ->
-            graphicWidth - (sideOffset + containerOffset * 2 + containerBorder * 2)
+            innerContainerX2 - sideLineOffset
 
-sideLineStartY : number
-sideLineStartY =
-    containerOffset + containerBorder
 
-sideLineEndY : number
-sideLineEndY =
-    graphicHeight - (containerOffset + containerBorder * 2)
+innerContainerX1 : Float
+innerContainerX1 =
+    (containerBorder) + containerOffset
+
+
+innerContainerX2 : Float
+innerContainerX2 =
+    graphicWidth - (containerBorder) - (containerOffset)
+
+
+innerContainerY1 : Float
+innerContainerY1 =
+    (containerBorder / 2) + containerOffset
+
+
+innerContainerY2 : Float
+innerContainerY2 =
+    graphicHeight - (containerBorder / 2) - (containerOffset)
+
+
+outerContainerX1 : Float
+outerContainerX1 =
+    containerOffset
+
+
+outerContainerX2 : Float
+outerContainerX2 =
+    graphicWidth - containerOffset
+
+
+outerContainerY1 : Float
+outerContainerY1 =
+    containerOffset
+
+
+outerContainerY2 : Float
+outerContainerY2 =
+    graphicHeight - containerOffset
+
+
+playerSideLinePosistion : Side -> Float -> Float
+playerSideLinePosistion side width =
+    case side of
+        Left ->
+            sideLinePosistion side - width
+
+        Right ->
+            sideLinePosistion side + width
