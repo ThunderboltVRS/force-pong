@@ -115,7 +115,7 @@ caclulateShotVelocity : Player -> Velocity
 caclulateShotVelocity player =
     let
         velocityMultiplierY =
-            0.08
+            0.5
 
         velocityMultiplierX =
             0.4

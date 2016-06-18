@@ -42,9 +42,11 @@ sideLineOffset : Float
 sideLineOffset =
     40
 
+
 sideLineWidth : Float
 sideLineWidth =
     1
+
 
 sideLinePosistion : Side -> Float
 sideLinePosistion side =
@@ -103,4 +105,4 @@ playerSideLinePosistion side width =
             sideLinePosistion side - width
 
         Right ->
-            sideLinePosistion side + width
+            sideLinePosistion side
