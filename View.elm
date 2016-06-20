@@ -43,7 +43,7 @@ createCircles world =
 
 createCircle : Sphere -> Svg.Svg msg
 createCircle sphere =
-    circle [ cx (toString sphere.position.x), cy (toString sphere.position.y), r (toString sphere.diameter), fill "url(#grad1)" ] [ sphereGradientColour ]
+    circle [ cx (toString sphere.position.x), cy (toString sphere.position.y), r (toString (sphere.diameter / 2)), fill "url(#grad1)" ] [ sphereGradientColour ]
 
 
 renderScores : World -> List (Svg.Svg msg)
@@ -55,13 +55,19 @@ renderScore : World -> Player -> Svg.Svg msg
 renderScore world player =
     rect
         [ x (outerBorderX player.side world |> toString)
-        , y (outerBorderY player.side player.score world |> toString)
+        , y (outerBorderY player.side (scoreHeight world.innerContainer player) world |> toString)
         , width (scoreWidth world |> toString)
-        , height (toString player.score)
+        , height (scoreHeight world.innerContainer player |> toString)
         , fill (playerColor player.side)
         , fillOpacity "0.1"
         ]
         []
+
+
+scoreHeight : Boundary -> Player -> Float
+scoreHeight innerContainer player =
+    (player.score / 100) * (innerContainer.y2 - innerContainer.y1)
+
 
 outerBorderX : Side -> World -> Float
 outerBorderX side world =
@@ -70,7 +76,7 @@ outerBorderX side world =
             world.outerContainer.x1 + (containerBorder / 2)
 
         Right ->
-            world.outerContainer.x2 - (containerBorder / 2) -  scoreWidth world
+            world.outerContainer.x2 - (containerBorder / 2) - scoreWidth world
 
 
 scoreWidth : World -> Float
@@ -151,9 +157,6 @@ innerSphereColour =
 outerSphereColour : Svg.Svg msg
 outerSphereColour =
     Svg.stop [ offset "100%", stopColor "#0B79CE", stopOpacity "1" ] []
-
-
-
 
 
 playerColor : Side -> String

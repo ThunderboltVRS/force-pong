@@ -25,6 +25,12 @@ type Side
     | Right
 
 
+type HitType
+    = LeftPlayer
+    | RightPlayer
+    | None
+
+
 type KeyboardKeyAction
     = Pressed
     | NotPressed
@@ -86,6 +92,7 @@ type alias Boundary =
     , y2 : Float
     }
 
+
 type alias Weapon =
     { weaponType : WeaponType
     , force : Force
@@ -101,25 +108,21 @@ type alias Sphere =
     , aliveFrames : Float
     , scale : Float
     , merged : Bool
+    , hitType : HitType
     }
 
 
 type alias World =
     { spheres : List (Sphere)
-    , sphereLimit : Constant
     , players : List (Player)
     , state : State
     , graphicSettings : GraphicSettings
     , leftSideLine : SideLine
     , rightSideLine : SideLine
     , physicsSettings : PhysicsSettings
+    , gameSettings : GameSettings
     , innerContainer : Boundary
     , outerContainer : Boundary
-    }
-
-
-type alias Constant =
-    { size : Float
     }
 
 
@@ -135,7 +138,17 @@ type alias Player =
     , mass : Mass
     , selectedWeapon : WeaponType
     , ammo : Float
-    , weapons : List(Weapon)
+    , weapons : List (Weapon)
+    , weaponLastFired : Float
+    }
+
+
+type alias GameSettings =
+    { maxScore : Float
+    , maxShotSize : Float
+    , minShotSize : Float
+    , shotTimeFactor : Float
+    , sphereLimit : Float
     }
 
 
@@ -146,9 +159,10 @@ type alias GraphicSettings =
 
 
 type alias PhysicsSettings =
-    { gravitationalConstant : Constant
+    { gravitationalConstant : Float
     , boundaryDampner : Float
     , maxSphereVelocity : Float
+    , maxSphereSize : Float
     }
 
 

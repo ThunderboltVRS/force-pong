@@ -12,12 +12,11 @@ defaultWorld : ( World, Cmd Msg )
 defaultWorld =
     ( { spheres =
             []
-      , sphereLimit = { size = 40 }
       , players =
             [ { number = One
               , position = { x = (playerSideLinePosistion Left playerWidth), y = graphicHeight / 2 }
               , side = Left
-              , score = 30
+              , score = 0
               , size = 60
               , velocity = { x = 0, y = 0 }
               , upAction = NotPressed
@@ -25,12 +24,13 @@ defaultWorld =
               , mass = { size = 10 }
               , selectedWeapon = Normal
               , ammo = 10
-              , weapons = [{weaponType = Normal, force = {x =1, y=0}}]
+              , weapons = [ { weaponType = Normal, force = { x = 1, y = 0 } } ]
+              , weaponLastFired = 0
               }
             , { number = Two
               , position = { x = (playerSideLinePosistion Right playerWidth), y = graphicHeight / 2 }
               , side = Right
-              , score = 90
+              , score = 0
               , size = 60
               , velocity = { x = 0, y = 0 }
               , upAction = NotPressed
@@ -38,14 +38,15 @@ defaultWorld =
               , mass = { size = 10 }
               , selectedWeapon = Normal
               , ammo = 10
-              , weapons = [{weaponType = Normal, force = {x =1, y=0}}]
+              , weapons = [ { weaponType = Normal, force = { x = 1, y = 0 } } ]
+              , weaponLastFired = 0
               }
             ]
       , state = Play
-      , graphicSettings = 
-      { graphicWidth = graphicWidth
-      , graphicHeight = graphicHeight
-      }
+      , graphicSettings =
+            { graphicWidth = graphicWidth
+            , graphicHeight = graphicHeight
+            }
       , leftSideLine =
             { side = Left
             , x1 = sideLinePosistion Left
@@ -61,9 +62,17 @@ defaultWorld =
             , y2 = innerContainerY2
             }
       , physicsSettings =
-            { gravitationalConstant = { size = 10 }
+            { gravitationalConstant = 10
             , boundaryDampner = 0.95
             , maxSphereVelocity = 10
+            , maxSphereSize = 200
+            }
+      , gameSettings =
+            { maxScore = 500
+            , maxShotSize = 45
+            , minShotSize = 20
+            , shotTimeFactor = 0.01
+            , sphereLimit = 40
             }
       , innerContainer =
             { x1 = innerContainerX1
