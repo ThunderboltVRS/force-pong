@@ -2,6 +2,7 @@ module Update exposing (..)
 
 import Types exposing (..)
 import Keyboard exposing (..)
+import Material
 
 
 -- Update
@@ -18,14 +19,6 @@ update msg world =
                 Pause ->
                     ( world, Cmd.none )
 
-        Click position ->
-            case world.state of
-                Play ->
-                    ( { world | state = Pause }, Cmd.none )
-
-                Pause ->
-                    ( { world | state = Play }, Cmd.none )
-
         WindowSize reSize ->
             ( world, Cmd.none )
 
@@ -34,6 +27,17 @@ update msg world =
 
         KeyUp key ->
             ( applyPlayerKeyChange key NotPressed world, Cmd.none )
+
+        TogglePause ->
+            case world.state of
+                Play ->
+                    ( { world | state = Pause }, Cmd.none )
+
+                Pause ->
+                    ( { world | state = Play }, Cmd.none )
+
+        MDL action' ->
+            Material.update MDL action' world
 
 
 applyPlayerKeyChange : KeyCode -> KeyboardKeyAction -> World -> World
@@ -178,6 +182,7 @@ createSphere player initialMass velocity =
             5
     in
         { id = "A"
+        , side = player.side
         , position = caclulateShotPosition player ((calculateDiameter scale initialMass.size) / 2)
         , mass = initialMass
         , diameter = calculateDiameter scale initialMass.size
@@ -237,7 +242,7 @@ playerScoreAsPercentage settings player spheres =
     List.filter (\e -> scored player.side e) spheres
         |> List.map (\e -> e.mass.size)
         |> List.sum
-        |> (\e -> toPercentage e settings.maxScore)
+        |> (\e -> toPercentage e settings.scoreForGame)
 
 
 toPercentage : Float -> Float -> Float

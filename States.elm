@@ -2,10 +2,10 @@ module States exposing (..)
 
 import Types exposing (..)
 import AnimationFrame
-import Mouse
 import Window exposing (..)
 import Keyboard exposing (..)
 import Config exposing (..)
+import Material
 
 
 defaultWorld : ( World, Cmd Msg )
@@ -68,11 +68,16 @@ defaultWorld =
             , maxSphereSize = 200
             }
       , gameSettings =
-            { maxScore = 500
+            { scoreForGame = 500
+            , scoreForSet = 5
             , maxShotSize = 45
             , minShotSize = 20
             , shotTimeFactor = 0.01
             , sphereLimit = 40
+            }
+      , winStates =
+            { gameWinState = NoWin
+            , setWinState = NoWin
             }
       , innerContainer =
             { x1 = innerContainerX1
@@ -86,6 +91,7 @@ defaultWorld =
             , y1 = outerContainerY1
             , y2 = outerContainerY2
             }
+      , mdl = Material.model 
       }
     , Cmd.none
     )
@@ -97,6 +103,5 @@ subscriptions world =
         [ AnimationFrame.diffs Tick
         , Keyboard.downs KeyDown
         , Keyboard.ups KeyUp
-        , Mouse.clicks Click
         , Window.resizes WindowSize
         ]

@@ -1,16 +1,17 @@
 module Types exposing (..)
 
 import Time exposing (Time, second, millisecond)
-import Mouse
 import Window exposing (..)
+import Material
 
 
 type Msg
     = Tick Time
-    | Click Mouse.Position
     | WindowSize Window.Size
     | KeyDown Int
     | KeyUp Int
+    | MDL Material.Msg
+    | TogglePause
 
 
 type WeaponType
@@ -23,6 +24,12 @@ type WeaponType
 type Side
     = Left
     | Right
+
+
+type WinState
+    = NoWin
+    | LeftWin
+    | RightWin
 
 
 type HitType
@@ -109,6 +116,7 @@ type alias Sphere =
     , scale : Float
     , merged : Bool
     , hitType : HitType
+    , side : Side
     }
 
 
@@ -121,8 +129,10 @@ type alias World =
     , rightSideLine : SideLine
     , physicsSettings : PhysicsSettings
     , gameSettings : GameSettings
+    , winStates : WinStates
     , innerContainer : Boundary
     , outerContainer : Boundary
+    , mdl : Material.Model
     }
 
 
@@ -143,8 +153,15 @@ type alias Player =
     }
 
 
+type alias WinStates =
+    { gameWinState : WinState
+    , setWinState : WinState
+    }
+
+
 type alias GameSettings =
-    { maxScore : Float
+    { scoreForGame : Float
+    , scoreForSet : Float
     , maxShotSize : Float
     , minShotSize : Float
     , shotTimeFactor : Float
@@ -173,3 +190,6 @@ type alias SideLine =
     , y1 : Float
     , y2 : Float
     }
+
+type alias Mdl = 
+  Material.Model 

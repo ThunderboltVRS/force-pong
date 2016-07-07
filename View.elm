@@ -5,13 +5,37 @@ import Svg.Attributes exposing (..)
 import Html exposing (..)
 import Types exposing (..)
 import Config exposing (..)
+import Material.Scheme
+import Material.Button as Button
+import Material.Options exposing (css)
+import Material.Color
 
 
 view : World -> Html Msg
 view model =
-    Svg.svg [ Svg.Attributes.width (toString graphicWidth), Svg.Attributes.height (toString graphicHeight), Svg.Attributes.style "background-color: none" ]
-        ((List.append [ sphereGradientColour, graphicContainer model ] (createWorldObjects model)))
-
+    div []
+        [ div []
+            [ Svg.svg
+                [ Svg.Attributes.width (toString graphicWidth)
+                , Svg.Attributes.height (toString graphicHeight)
+                , Svg.Attributes.style "background-color: none"
+                ]
+                ((List.append [ sphereGradientColour Left, sphereGradientColour Right, graphicContainer model ] (renderWorldObjects model)))
+            ]
+        , div []
+            [ Button.render MDL
+                [ 0 ]
+                model.mdl
+                [ css "margin" "0 24px"
+                    , Button.raised
+                    , Button.ripple
+                    , Button.colored
+                    , Button.onClick TogglePause
+                ]
+                [ Html.text "Pause" ]
+            ]
+        ]
+        |> Material.Scheme.topWithScheme Material.Color.Blue Material.Color.LightBlue
 
 graphicContainer : World -> Svg.Svg msg
 graphicContainer world =
@@ -28,22 +52,29 @@ graphicContainer world =
         []
 
 
-createWorldObjects : World -> List (Svg.Svg msg)
-createWorldObjects world =
-    createCircles world
-        |> (\e -> List.append e (createPlayers world.players world))
-        |> (\e -> List.append e (createSideLines world))
+renderWorldObjects : World -> List (Svg.Svg msg)
+renderWorldObjects world =
+    renderCircles world
+        |> (\e -> List.append e (renderPlayers world.players world))
+        |> (\e -> List.append e (renderSideLines world))
         |> (\e -> List.append e (renderScores world))
+        |> renderStateMessage world
 
 
-createCircles : World -> List (Svg.Svg msg)
-createCircles world =
-    List.map (\e -> createCircle e) world.spheres
+renderCircles : World -> List (Svg.Svg msg)
+renderCircles world =
+    List.map (\e -> renderCircle e) world.spheres
 
 
-createCircle : Sphere -> Svg.Svg msg
-createCircle sphere =
-    circle [ cx (toString sphere.position.x), cy (toString sphere.position.y), r (toString (sphere.diameter / 2)), fill "url(#grad1)" ] [ sphereGradientColour ]
+renderCircle : Sphere -> Svg.Svg msg
+renderCircle sphere =
+    circle
+        [ cx (toString sphere.position.x)
+        , cy (toString sphere.position.y)
+        , r (toString (sphere.diameter / 2))
+        , fill (sphereGradientName sphere.side)
+        ]
+        [ sphereGradientColour sphere.side ]
 
 
 renderScores : World -> List (Svg.Svg msg)
@@ -94,13 +125,13 @@ outerBorderY side height world =
             world.outerContainer.y2 - (containerBorder / 2) - height
 
 
-createSideLines : World -> List (Svg.Svg msg)
-createSideLines world =
-    [ createSideLine world.leftSideLine, createSideLine world.rightSideLine ]
+renderSideLines : World -> List (Svg.Svg msg)
+renderSideLines world =
+    [ renderSideLine world.leftSideLine, renderSideLine world.rightSideLine ]
 
 
-createSideLine : SideLine -> Svg.Svg msg
-createSideLine sideline =
+renderSideLine : SideLine -> Svg.Svg msg
+renderSideLine sideline =
     line
         [ x1 (toString sideline.x1)
         , x2 (toString sideline.x2)
@@ -113,9 +144,9 @@ createSideLine sideline =
         []
 
 
-createPlayers : List (Player) -> World -> List (Svg.Svg msg)
-createPlayers players world =
-    List.map (\e -> createPlayer e (getSideLine e.side world) world) players
+renderPlayers : List (Player) -> World -> List (Svg.Svg msg)
+renderPlayers players world =
+    List.map (\e -> renderPlayer e (getSideLine e.side world) world) players
 
 
 getSideLine : Side -> World -> SideLine
@@ -128,8 +159,8 @@ getSideLine side world =
             world.rightSideLine
 
 
-createPlayer : Player -> SideLine -> World -> Svg.Svg msg
-createPlayer player sideLine world =
+renderPlayer : Player -> SideLine -> World -> Svg.Svg msg
+renderPlayer player sideLine world =
     rect
         [ x (player.position.x |> toString)
         , y (player.position.y |> toString)
@@ -144,19 +175,72 @@ createPlayer player sideLine world =
         []
 
 
-sphereGradientColour : Svg.Svg msg
-sphereGradientColour =
-    radialGradient [ Svg.Attributes.id "grad1", cx "50%", cy "50%", r "50%", fx "50%", fy "50%" ] [ innerSphereColour, outerSphereColour ]
+renderStateMessage : World -> List (Svg.Svg msg) -> List (Svg.Svg msg)
+renderStateMessage world svgs =
+    if world.state == Pause then
+        List.append [ renderMessage "Paused" world ] svgs
+    else
+        svgs
 
 
-innerSphereColour : Svg.Svg msg
-innerSphereColour =
-    Svg.stop [ offset "0%", stopColor "#0B79CE", stopOpacity "0.3" ] []
+renderMessage : String -> World -> Svg.Svg msg
+renderMessage message world =
+    Svg.text'
+        [ x ((toString (world.outerContainer.x2 / 2)) ++ "px")
+        , y ((toString (world.outerContainer.y2 / 2)) ++ "px")
+        , fill "blue"
+        , Svg.Attributes.opacity "0.6"
+        ]
+        [ Svg.text message
+        ]
 
 
-outerSphereColour : Svg.Svg msg
-outerSphereColour =
-    Svg.stop [ offset "100%", stopColor "#0B79CE", stopOpacity "1" ] []
+sphereGradientColour : Side -> Svg.Svg msg
+sphereGradientColour side =
+    radialGradient
+        [ Svg.Attributes.id (sphereGradientName side)
+        , cx "50%"
+        , cy "50%"
+        , r "50%"
+        , fx "50%"
+        , fy "50%"
+        ]
+        [ innerSphereGradientColour side, outerSphereGradientColour side ]
+
+
+sphereGradientName : Side -> String
+sphereGradientName side =
+    "sphereGradient-" ++ (toString side)
+
+
+innerSphereGradientColour : Side -> Svg.Svg msg
+innerSphereGradientColour side =
+    Svg.stop [ offset "0%", stopOpacity "0.3", innerSphereColour side ] []
+
+
+innerSphereColour : Side -> Svg.Attribute msg
+innerSphereColour side =
+    case side of
+        Left ->
+            stopColor "0B79CE"
+
+        Right ->
+            stopColor "0B79CE"
+
+
+outerSphereGradientColour : Side -> Svg.Svg msg
+outerSphereGradientColour side =
+    Svg.stop [ offset "100%", stopOpacity "1", outerSphereColour side ] []
+
+
+outerSphereColour : Side -> Svg.Attribute msg
+outerSphereColour side =
+    case side of
+        Left ->
+            stopColor "0B79CE"
+
+        Right ->
+            stopColor "0B79CE"
 
 
 playerColor : Side -> String

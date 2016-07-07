@@ -1,4 +1,6 @@
-
+<!DOCTYPE HTML>
+<html><head><meta charset="UTF-8"><title>Main</title><style>html,head,body { padding:0; margin:0; }
+body { font-family: calibri, helvetica, arial, sans-serif; }</style><script type="text/javascript">
 (function() {
 'use strict';
 
@@ -134,7 +136,6 @@ function A9(fun, a, b, c, d, e, f, g, h, i)
     ? fun.func(a, b, c, d, e, f, g, h, i)
     : fun(a)(b)(c)(d)(e)(f)(g)(h)(i);
 }
-
 //import Native.Utils //
 
 var _elm_lang$core$Native_Basics = function() {
@@ -275,8 +276,7 @@ return {
 	isInfinite: isInfinite
 };
 
-}();
-//import //
+}();//import //
 
 var _elm_lang$core$Native_Utils = function() {
 
@@ -692,8 +692,7 @@ return {
 	toString: toString
 };
 
-}();
-var _elm_lang$core$Basics$uncurry = F2(
+}();var _elm_lang$core$Basics$uncurry = F2(
 	function (f, _p0) {
 		var _p1 = _p0;
 		return A2(f, _p1._0, _p1._1);
@@ -817,7 +816,6 @@ var _elm_lang$core$Basics$LT = {ctor: 'LT'};
 var _elm_lang$core$Basics$Never = function (a) {
 	return {ctor: 'Never', _0: a};
 };
-
 //import Native.Utils //
 
 var _elm_lang$core$Native_Debug = function() {
@@ -847,10 +845,8 @@ return {
 	log: F2(log)
 };
 
-}();
-var _elm_lang$core$Debug$crash = _elm_lang$core$Native_Debug.crash;
+}();var _elm_lang$core$Debug$crash = _elm_lang$core$Native_Debug.crash;
 var _elm_lang$core$Debug$log = _elm_lang$core$Native_Debug.log;
-
 var _elm_lang$core$Maybe$withDefault = F2(
 	function ($default, maybe) {
 		var _p0 = maybe;
@@ -942,7 +938,6 @@ var _elm_lang$core$Maybe$map5 = F6(
 			return _elm_lang$core$Maybe$Nothing;
 		}
 	});
-
 //import Native.Utils //
 
 var _elm_lang$core$Native_List = function() {
@@ -1095,8 +1090,7 @@ return {
 	sortWith: F2(sortWith)
 };
 
-}();
-var _elm_lang$core$List$sortWith = _elm_lang$core$Native_List.sortWith;
+}();var _elm_lang$core$List$sortWith = _elm_lang$core$Native_List.sortWith;
 var _elm_lang$core$List$sortBy = _elm_lang$core$Native_List.sortBy;
 var _elm_lang$core$List$sort = function (xs) {
 	return A2(_elm_lang$core$List$sortBy, _elm_lang$core$Basics$identity, xs);
@@ -1495,7 +1489,6 @@ var _elm_lang$core$List$repeat = F2(
 			n,
 			value);
 	});
-
 var _elm_lang$core$Result$toMaybe = function (result) {
 	var _p0 = result;
 	if (_p0.ctor === 'Ok') {
@@ -1637,7 +1630,6 @@ var _elm_lang$core$Result$fromMaybe = F2(
 			return _elm_lang$core$Result$Err(err);
 		}
 	});
-
 //import //
 
 var _elm_lang$core$Native_Platform = function() {
@@ -2214,8 +2206,7 @@ return {
 	map: F2(map)
 };
 
-}();
-//import Native.Utils //
+}();//import Native.Utils //
 
 var _elm_lang$core$Native_Scheduler = function() {
 
@@ -2492,15 +2483,13 @@ return {
 	rawSend: rawSend
 };
 
-}();
-var _elm_lang$core$Platform$hack = _elm_lang$core$Native_Scheduler.succeed;
+}();var _elm_lang$core$Platform$hack = _elm_lang$core$Native_Scheduler.succeed;
 var _elm_lang$core$Platform$sendToSelf = _elm_lang$core$Native_Platform.sendToSelf;
 var _elm_lang$core$Platform$sendToApp = _elm_lang$core$Native_Platform.sendToApp;
 var _elm_lang$core$Platform$Program = {ctor: 'Program'};
 var _elm_lang$core$Platform$Task = {ctor: 'Task'};
 var _elm_lang$core$Platform$ProcessId = {ctor: 'ProcessId'};
 var _elm_lang$core$Platform$Router = {ctor: 'Router'};
-
 var _elm_lang$core$Platform_Cmd$batch = _elm_lang$core$Native_Platform.batch;
 var _elm_lang$core$Platform_Cmd$none = _elm_lang$core$Platform_Cmd$batch(
 	_elm_lang$core$Native_List.fromArray(
@@ -2516,14 +2505,44 @@ _elm_lang$core$Platform_Cmd_ops['!'] = F2(
 	});
 var _elm_lang$core$Platform_Cmd$map = _elm_lang$core$Native_Platform.map;
 var _elm_lang$core$Platform_Cmd$Cmd = {ctor: 'Cmd'};
-
 var _elm_lang$core$Platform_Sub$batch = _elm_lang$core$Native_Platform.batch;
 var _elm_lang$core$Platform_Sub$none = _elm_lang$core$Platform_Sub$batch(
 	_elm_lang$core$Native_List.fromArray(
 		[]));
 var _elm_lang$core$Platform_Sub$map = _elm_lang$core$Native_Platform.map;
 var _elm_lang$core$Platform_Sub$Sub = {ctor: 'Sub'};
+var _elm_lang$animation_frame$Native_AnimationFrame = function()
+{
 
+var hasStartTime =
+	window.performance &&
+	window.performance.timing &&
+	window.performance.timing.navigationStart;
+
+var navStart = hasStartTime
+	? window.performance.timing.navigationStart
+	: Date.now();
+
+var rAF = _elm_lang$core$Native_Scheduler.nativeBinding(function(callback)
+{
+	var id = requestAnimationFrame(function(time) {
+		var timeNow = time
+			? (time > navStart ? time : time + navStart)
+			: Date.now();
+
+		callback(_elm_lang$core$Native_Scheduler.succeed(timeNow));
+	});
+
+	return function() {
+		cancelAnimationFrame(id);
+	};
+});
+
+return {
+	rAF: rAF
+};
+
+}();
 var _elm_lang$core$Task$onError = _elm_lang$core$Native_Scheduler.onError;
 var _elm_lang$core$Task$andThen = _elm_lang$core$Native_Scheduler.andThen;
 var _elm_lang$core$Task$spawnCmd = F2(
@@ -2756,7 +2775,6 @@ var _elm_lang$core$Task$cmdMap = F2(
 			A2(_elm_lang$core$Task$map, tagger, _p11._0));
 	});
 _elm_lang$core$Native_Platform.effectManagers['Task'] = {pkg: 'elm-lang/core', init: _elm_lang$core$Task$init, onEffects: _elm_lang$core$Task$onEffects, onSelfMsg: _elm_lang$core$Task$onSelfMsg, tag: 'cmd', cmdMap: _elm_lang$core$Task$cmdMap};
-
 //import Maybe, Native.List, Native.Utils, Result //
 
 var _elm_lang$core$Native_String = function() {
@@ -3083,8 +3101,7 @@ return {
 	fromList: fromList
 };
 
-}();
-//import Native.Utils //
+}();//import Native.Utils //
 
 var _elm_lang$core$Native_Char = function() {
 
@@ -3097,8 +3114,7 @@ return {
 	toLocaleLower: function(c) { return _elm_lang$core$Native_Utils.chr(c.toLocaleLowerCase()); }
 };
 
-}();
-var _elm_lang$core$Char$fromCode = _elm_lang$core$Native_Char.fromCode;
+}();var _elm_lang$core$Char$fromCode = _elm_lang$core$Native_Char.fromCode;
 var _elm_lang$core$Char$toCode = _elm_lang$core$Native_Char.toCode;
 var _elm_lang$core$Char$toLocaleLower = _elm_lang$core$Native_Char.toLocaleLower;
 var _elm_lang$core$Char$toLocaleUpper = _elm_lang$core$Native_Char.toLocaleUpper;
@@ -3140,7 +3156,6 @@ var _elm_lang$core$Char$isHexDigit = function ($char) {
 		_elm_lang$core$Native_Utils.chr('F'),
 		$char));
 };
-
 var _elm_lang$core$String$fromList = _elm_lang$core$Native_String.fromList;
 var _elm_lang$core$String$toList = _elm_lang$core$Native_String.toList;
 var _elm_lang$core$String$toFloat = _elm_lang$core$Native_String.toFloat;
@@ -3184,7 +3199,6 @@ var _elm_lang$core$String$fromChar = function ($char) {
 	return A2(_elm_lang$core$String$cons, $char, '');
 };
 var _elm_lang$core$String$isEmpty = _elm_lang$core$Native_String.isEmpty;
-
 var _elm_lang$core$Dict$foldr = F3(
 	function (f, acc, t) {
 		foldr:
@@ -4061,7 +4075,6 @@ var _elm_lang$core$Dict$diff = F2(
 			t1,
 			t2);
 	});
-
 //import Native.Scheduler //
 
 var _elm_lang$core$Native_Time = function() {
@@ -4088,8 +4101,7 @@ return {
 	setInterval_: F2(setInterval_)
 };
 
-}();
-var _elm_lang$core$Time$setInterval = _elm_lang$core$Native_Time.setInterval_;
+}();var _elm_lang$core$Time$setInterval = _elm_lang$core$Native_Time.setInterval_;
 var _elm_lang$core$Time$spawnHelp = F3(
 	function (router, intervals, processes) {
 		var _p0 = intervals;
@@ -4277,11 +4289,152 @@ var _elm_lang$core$Time$subMap = F2(
 			});
 	});
 _elm_lang$core$Native_Platform.effectManagers['Time'] = {pkg: 'elm-lang/core', init: _elm_lang$core$Time$init, onEffects: _elm_lang$core$Time$onEffects, onSelfMsg: _elm_lang$core$Time$onSelfMsg, tag: 'sub', subMap: _elm_lang$core$Time$subMap};
-
 var _elm_lang$core$Process$kill = _elm_lang$core$Native_Scheduler.kill;
 var _elm_lang$core$Process$sleep = _elm_lang$core$Native_Scheduler.sleep;
 var _elm_lang$core$Process$spawn = _elm_lang$core$Native_Scheduler.spawn;
-
+var _elm_lang$animation_frame$AnimationFrame$rAF = _elm_lang$animation_frame$Native_AnimationFrame.rAF;
+var _elm_lang$animation_frame$AnimationFrame$subscription = _elm_lang$core$Native_Platform.leaf('AnimationFrame');
+var _elm_lang$animation_frame$AnimationFrame$State = F3(
+	function (a, b, c) {
+		return {subs: a, request: b, oldTime: c};
+	});
+var _elm_lang$animation_frame$AnimationFrame$init = _elm_lang$core$Task$succeed(
+	A3(
+		_elm_lang$animation_frame$AnimationFrame$State,
+		_elm_lang$core$Native_List.fromArray(
+			[]),
+		_elm_lang$core$Maybe$Nothing,
+		0));
+var _elm_lang$animation_frame$AnimationFrame$onEffects = F3(
+	function (router, subs, _p0) {
+		var _p1 = _p0;
+		var _p5 = _p1.request;
+		var _p4 = _p1.oldTime;
+		var _p2 = {ctor: '_Tuple2', _0: _p5, _1: subs};
+		if (_p2._0.ctor === 'Nothing') {
+			if (_p2._1.ctor === '[]') {
+				return _elm_lang$core$Task$succeed(
+					A3(
+						_elm_lang$animation_frame$AnimationFrame$State,
+						_elm_lang$core$Native_List.fromArray(
+							[]),
+						_elm_lang$core$Maybe$Nothing,
+						_p4));
+			} else {
+				return A2(
+					_elm_lang$core$Task$andThen,
+					_elm_lang$core$Process$spawn(
+						A2(
+							_elm_lang$core$Task$andThen,
+							_elm_lang$animation_frame$AnimationFrame$rAF,
+							_elm_lang$core$Platform$sendToSelf(router))),
+					function (pid) {
+						return A2(
+							_elm_lang$core$Task$andThen,
+							_elm_lang$core$Time$now,
+							function (time) {
+								return _elm_lang$core$Task$succeed(
+									A3(
+										_elm_lang$animation_frame$AnimationFrame$State,
+										subs,
+										_elm_lang$core$Maybe$Just(pid),
+										time));
+							});
+					});
+			}
+		} else {
+			if (_p2._1.ctor === '[]') {
+				return A2(
+					_elm_lang$core$Task$andThen,
+					_elm_lang$core$Process$kill(_p2._0._0),
+					function (_p3) {
+						return _elm_lang$core$Task$succeed(
+							A3(
+								_elm_lang$animation_frame$AnimationFrame$State,
+								_elm_lang$core$Native_List.fromArray(
+									[]),
+								_elm_lang$core$Maybe$Nothing,
+								_p4));
+					});
+			} else {
+				return _elm_lang$core$Task$succeed(
+					A3(_elm_lang$animation_frame$AnimationFrame$State, subs, _p5, _p4));
+			}
+		}
+	});
+var _elm_lang$animation_frame$AnimationFrame$onSelfMsg = F3(
+	function (router, newTime, _p6) {
+		var _p7 = _p6;
+		var _p10 = _p7.subs;
+		var diff = newTime - _p7.oldTime;
+		var send = function (sub) {
+			var _p8 = sub;
+			if (_p8.ctor === 'Time') {
+				return A2(
+					_elm_lang$core$Platform$sendToApp,
+					router,
+					_p8._0(newTime));
+			} else {
+				return A2(
+					_elm_lang$core$Platform$sendToApp,
+					router,
+					_p8._0(diff));
+			}
+		};
+		return A2(
+			_elm_lang$core$Task$andThen,
+			_elm_lang$core$Process$spawn(
+				A2(
+					_elm_lang$core$Task$andThen,
+					_elm_lang$animation_frame$AnimationFrame$rAF,
+					_elm_lang$core$Platform$sendToSelf(router))),
+			function (pid) {
+				return A2(
+					_elm_lang$core$Task$andThen,
+					_elm_lang$core$Task$sequence(
+						A2(_elm_lang$core$List$map, send, _p10)),
+					function (_p9) {
+						return _elm_lang$core$Task$succeed(
+							A3(
+								_elm_lang$animation_frame$AnimationFrame$State,
+								_p10,
+								_elm_lang$core$Maybe$Just(pid),
+								newTime));
+					});
+			});
+	});
+var _elm_lang$animation_frame$AnimationFrame$Diff = function (a) {
+	return {ctor: 'Diff', _0: a};
+};
+var _elm_lang$animation_frame$AnimationFrame$diffs = function (tagger) {
+	return _elm_lang$animation_frame$AnimationFrame$subscription(
+		_elm_lang$animation_frame$AnimationFrame$Diff(tagger));
+};
+var _elm_lang$animation_frame$AnimationFrame$Time = function (a) {
+	return {ctor: 'Time', _0: a};
+};
+var _elm_lang$animation_frame$AnimationFrame$times = function (tagger) {
+	return _elm_lang$animation_frame$AnimationFrame$subscription(
+		_elm_lang$animation_frame$AnimationFrame$Time(tagger));
+};
+var _elm_lang$animation_frame$AnimationFrame$subMap = F2(
+	function (func, sub) {
+		var _p11 = sub;
+		if (_p11.ctor === 'Time') {
+			return _elm_lang$animation_frame$AnimationFrame$Time(
+				function (_p12) {
+					return func(
+						_p11._0(_p12));
+				});
+		} else {
+			return _elm_lang$animation_frame$AnimationFrame$Diff(
+				function (_p13) {
+					return func(
+						_p11._0(_p13));
+				});
+		}
+	});
+_elm_lang$core$Native_Platform.effectManagers['AnimationFrame'] = {pkg: 'elm-lang/animation-frame', init: _elm_lang$animation_frame$AnimationFrame$init, onEffects: _elm_lang$animation_frame$AnimationFrame$onEffects, onSelfMsg: _elm_lang$animation_frame$AnimationFrame$onSelfMsg, tag: 'sub', subMap: _elm_lang$animation_frame$AnimationFrame$subMap};
 //import Native.List //
 
 var _elm_lang$core$Native_Array = function() {
@@ -5248,8 +5401,7 @@ return {
 	fromJSArray: fromJSArray
 };
 
-}();
-var _elm_lang$core$Array$append = _elm_lang$core$Native_Array.append;
+}();var _elm_lang$core$Array$append = _elm_lang$core$Native_Array.append;
 var _elm_lang$core$Array$length = _elm_lang$core$Native_Array.length;
 var _elm_lang$core$Array$isEmpty = function (array) {
 	return _elm_lang$core$Native_Utils.eq(
@@ -5302,7 +5454,6 @@ var _elm_lang$core$Array$repeat = F2(
 			_elm_lang$core$Basics$always(e));
 	});
 var _elm_lang$core$Array$Array = {ctor: 'Array'};
-
 //import Maybe, Native.Array, Native.List, Native.Utils, Result //
 
 var _elm_lang$core$Native_Json = function() {
@@ -5956,7 +6107,6 @@ return {
 };
 
 }();
-
 var _elm_lang$core$Json_Encode$list = _elm_lang$core$Native_Json.encodeList;
 var _elm_lang$core$Json_Encode$array = _elm_lang$core$Native_Json.encodeArray;
 var _elm_lang$core$Json_Encode$object = _elm_lang$core$Native_Json.encodeObject;
@@ -5967,7 +6117,6 @@ var _elm_lang$core$Json_Encode$int = _elm_lang$core$Native_Json.identity;
 var _elm_lang$core$Json_Encode$string = _elm_lang$core$Native_Json.identity;
 var _elm_lang$core$Json_Encode$encode = _elm_lang$core$Native_Json.encode;
 var _elm_lang$core$Json_Encode$Value = {ctor: 'Value'};
-
 var _elm_lang$core$Json_Decode$tuple8 = _elm_lang$core$Native_Json.decodeTuple8;
 var _elm_lang$core$Json_Decode$tuple7 = _elm_lang$core$Native_Json.decodeTuple7;
 var _elm_lang$core$Json_Decode$tuple6 = _elm_lang$core$Native_Json.decodeTuple6;
@@ -6028,7 +6177,6 @@ var _elm_lang$core$Json_Decode$dict = function (decoder) {
 		_elm_lang$core$Json_Decode$keyValuePairs(decoder));
 };
 var _elm_lang$core$Json_Decode$Decoder = {ctor: 'Decoder'};
-
 var _elm_lang$dom$Native_Dom = function() {
 
 function on(node)
@@ -6062,10 +6210,8 @@ return {
 };
 
 }();
-
 var _elm_lang$dom$Dom_LowLevel$onWindow = _elm_lang$dom$Native_Dom.onWindow;
 var _elm_lang$dom$Dom_LowLevel$onDocument = _elm_lang$dom$Native_Dom.onDocument;
-
 //import Native.Json //
 
 var _elm_lang$virtual_dom$Native_VirtualDom = function() {
@@ -7091,8 +7237,7 @@ return {
 	programWithFlags: programWithFlags
 };
 
-}();
-var _elm_lang$virtual_dom$VirtualDom$programWithFlags = _elm_lang$virtual_dom$Native_VirtualDom.programWithFlags;
+}();var _elm_lang$virtual_dom$VirtualDom$programWithFlags = _elm_lang$virtual_dom$Native_VirtualDom.programWithFlags;
 var _elm_lang$virtual_dom$VirtualDom$lazy3 = _elm_lang$virtual_dom$Native_VirtualDom.lazy3;
 var _elm_lang$virtual_dom$VirtualDom$lazy2 = _elm_lang$virtual_dom$Native_VirtualDom.lazy2;
 var _elm_lang$virtual_dom$VirtualDom$lazy = _elm_lang$virtual_dom$Native_VirtualDom.lazy;
@@ -7115,7 +7260,6 @@ var _elm_lang$virtual_dom$VirtualDom$Options = F2(
 	});
 var _elm_lang$virtual_dom$VirtualDom$Node = {ctor: 'Node'};
 var _elm_lang$virtual_dom$VirtualDom$Property = {ctor: 'Property'};
-
 var _elm_lang$html$Html$text = _elm_lang$virtual_dom$VirtualDom$text;
 var _elm_lang$html$Html$node = _elm_lang$virtual_dom$VirtualDom$node;
 var _elm_lang$html$Html$body = _elm_lang$html$Html$node('body');
@@ -7217,7 +7361,212 @@ var _elm_lang$html$Html$details = _elm_lang$html$Html$node('details');
 var _elm_lang$html$Html$summary = _elm_lang$html$Html$node('summary');
 var _elm_lang$html$Html$menuitem = _elm_lang$html$Html$node('menuitem');
 var _elm_lang$html$Html$menu = _elm_lang$html$Html$node('menu');
-
+var _elm_lang$html$Html_App$programWithFlags = _elm_lang$virtual_dom$VirtualDom$programWithFlags;
+var _elm_lang$html$Html_App$program = function (app) {
+	return _elm_lang$html$Html_App$programWithFlags(
+		_elm_lang$core$Native_Utils.update(
+			app,
+			{
+				init: function (_p0) {
+					return app.init;
+				}
+			}));
+};
+var _elm_lang$html$Html_App$beginnerProgram = function (_p1) {
+	var _p2 = _p1;
+	return _elm_lang$html$Html_App$programWithFlags(
+		{
+			init: function (_p3) {
+				return A2(
+					_elm_lang$core$Platform_Cmd_ops['!'],
+					_p2.model,
+					_elm_lang$core$Native_List.fromArray(
+						[]));
+			},
+			update: F2(
+				function (msg, model) {
+					return A2(
+						_elm_lang$core$Platform_Cmd_ops['!'],
+						A2(_p2.update, msg, model),
+						_elm_lang$core$Native_List.fromArray(
+							[]));
+				}),
+			view: _p2.view,
+			subscriptions: function (_p4) {
+				return _elm_lang$core$Platform_Sub$none;
+			}
+		});
+};
+var _elm_lang$html$Html_App$map = _elm_lang$virtual_dom$VirtualDom$map;
+var _elm_lang$keyboard$Keyboard$onSelfMsg = F3(
+	function (router, _p0, state) {
+		var _p1 = _p0;
+		var _p2 = A2(_elm_lang$core$Dict$get, _p1.category, state);
+		if (_p2.ctor === 'Nothing') {
+			return _elm_lang$core$Task$succeed(state);
+		} else {
+			var send = function (tagger) {
+				return A2(
+					_elm_lang$core$Platform$sendToApp,
+					router,
+					tagger(_p1.keyCode));
+			};
+			return A2(
+				_elm_lang$core$Task$andThen,
+				_elm_lang$core$Task$sequence(
+					A2(_elm_lang$core$List$map, send, _p2._0.taggers)),
+				function (_p3) {
+					return _elm_lang$core$Task$succeed(state);
+				});
+		}
+	});
+var _elm_lang$keyboard$Keyboard_ops = _elm_lang$keyboard$Keyboard_ops || {};
+_elm_lang$keyboard$Keyboard_ops['&>'] = F2(
+	function (t1, t2) {
+		return A2(
+			_elm_lang$core$Task$andThen,
+			t1,
+			function (_p4) {
+				return t2;
+			});
+	});
+var _elm_lang$keyboard$Keyboard$init = _elm_lang$core$Task$succeed(_elm_lang$core$Dict$empty);
+var _elm_lang$keyboard$Keyboard$categorizeHelpHelp = F2(
+	function (value, maybeValues) {
+		var _p5 = maybeValues;
+		if (_p5.ctor === 'Nothing') {
+			return _elm_lang$core$Maybe$Just(
+				_elm_lang$core$Native_List.fromArray(
+					[value]));
+		} else {
+			return _elm_lang$core$Maybe$Just(
+				A2(_elm_lang$core$List_ops['::'], value, _p5._0));
+		}
+	});
+var _elm_lang$keyboard$Keyboard$categorizeHelp = F2(
+	function (subs, subDict) {
+		categorizeHelp:
+		while (true) {
+			var _p6 = subs;
+			if (_p6.ctor === '[]') {
+				return subDict;
+			} else {
+				var _v4 = _p6._1,
+					_v5 = A3(
+					_elm_lang$core$Dict$update,
+					_p6._0._0,
+					_elm_lang$keyboard$Keyboard$categorizeHelpHelp(_p6._0._1),
+					subDict);
+				subs = _v4;
+				subDict = _v5;
+				continue categorizeHelp;
+			}
+		}
+	});
+var _elm_lang$keyboard$Keyboard$categorize = function (subs) {
+	return A2(_elm_lang$keyboard$Keyboard$categorizeHelp, subs, _elm_lang$core$Dict$empty);
+};
+var _elm_lang$keyboard$Keyboard$keyCode = A2(_elm_lang$core$Json_Decode_ops[':='], 'keyCode', _elm_lang$core$Json_Decode$int);
+var _elm_lang$keyboard$Keyboard$subscription = _elm_lang$core$Native_Platform.leaf('Keyboard');
+var _elm_lang$keyboard$Keyboard$Watcher = F2(
+	function (a, b) {
+		return {taggers: a, pid: b};
+	});
+var _elm_lang$keyboard$Keyboard$Msg = F2(
+	function (a, b) {
+		return {category: a, keyCode: b};
+	});
+var _elm_lang$keyboard$Keyboard$onEffects = F3(
+	function (router, newSubs, oldState) {
+		var rightStep = F3(
+			function (category, taggers, task) {
+				return A2(
+					_elm_lang$core$Task$andThen,
+					task,
+					function (state) {
+						return A2(
+							_elm_lang$core$Task$andThen,
+							_elm_lang$core$Process$spawn(
+								A3(
+									_elm_lang$dom$Dom_LowLevel$onDocument,
+									category,
+									_elm_lang$keyboard$Keyboard$keyCode,
+									function (_p7) {
+										return A2(
+											_elm_lang$core$Platform$sendToSelf,
+											router,
+											A2(_elm_lang$keyboard$Keyboard$Msg, category, _p7));
+									})),
+							function (pid) {
+								return _elm_lang$core$Task$succeed(
+									A3(
+										_elm_lang$core$Dict$insert,
+										category,
+										A2(_elm_lang$keyboard$Keyboard$Watcher, taggers, pid),
+										state));
+							});
+					});
+			});
+		var bothStep = F4(
+			function (category, _p8, taggers, task) {
+				var _p9 = _p8;
+				return A2(
+					_elm_lang$core$Task$andThen,
+					task,
+					function (state) {
+						return _elm_lang$core$Task$succeed(
+							A3(
+								_elm_lang$core$Dict$insert,
+								category,
+								A2(_elm_lang$keyboard$Keyboard$Watcher, taggers, _p9.pid),
+								state));
+					});
+			});
+		var leftStep = F3(
+			function (category, _p10, task) {
+				var _p11 = _p10;
+				return A2(
+					_elm_lang$keyboard$Keyboard_ops['&>'],
+					_elm_lang$core$Process$kill(_p11.pid),
+					task);
+			});
+		return A6(
+			_elm_lang$core$Dict$merge,
+			leftStep,
+			bothStep,
+			rightStep,
+			oldState,
+			_elm_lang$keyboard$Keyboard$categorize(newSubs),
+			_elm_lang$core$Task$succeed(_elm_lang$core$Dict$empty));
+	});
+var _elm_lang$keyboard$Keyboard$MySub = F2(
+	function (a, b) {
+		return {ctor: 'MySub', _0: a, _1: b};
+	});
+var _elm_lang$keyboard$Keyboard$presses = function (tagger) {
+	return _elm_lang$keyboard$Keyboard$subscription(
+		A2(_elm_lang$keyboard$Keyboard$MySub, 'keypress', tagger));
+};
+var _elm_lang$keyboard$Keyboard$downs = function (tagger) {
+	return _elm_lang$keyboard$Keyboard$subscription(
+		A2(_elm_lang$keyboard$Keyboard$MySub, 'keydown', tagger));
+};
+var _elm_lang$keyboard$Keyboard$ups = function (tagger) {
+	return _elm_lang$keyboard$Keyboard$subscription(
+		A2(_elm_lang$keyboard$Keyboard$MySub, 'keyup', tagger));
+};
+var _elm_lang$keyboard$Keyboard$subMap = F2(
+	function (func, _p12) {
+		var _p13 = _p12;
+		return A2(
+			_elm_lang$keyboard$Keyboard$MySub,
+			_p13._0,
+			function (_p14) {
+				return func(
+					_p13._1(_p14));
+			});
+	});
+_elm_lang$core$Native_Platform.effectManagers['Keyboard'] = {pkg: 'elm-lang/keyboard', init: _elm_lang$keyboard$Keyboard$init, onEffects: _elm_lang$keyboard$Keyboard$onEffects, onSelfMsg: _elm_lang$keyboard$Keyboard$onSelfMsg, tag: 'sub', subMap: _elm_lang$keyboard$Keyboard$subMap};
 var _elm_lang$mouse$Mouse$onSelfMsg = F3(
 	function (router, _p0, state) {
 		var _p1 = _p0;
@@ -7399,7 +7748,6 @@ var _elm_lang$mouse$Mouse$subMap = F2(
 			});
 	});
 _elm_lang$core$Native_Platform.effectManagers['Mouse'] = {pkg: 'elm-lang/mouse', init: _elm_lang$mouse$Mouse$init, onEffects: _elm_lang$mouse$Mouse$onEffects, onSelfMsg: _elm_lang$mouse$Mouse$onSelfMsg, tag: 'sub', subMap: _elm_lang$mouse$Mouse$subMap};
-
 var _elm_lang$svg$Svg$text = _elm_lang$virtual_dom$VirtualDom$text;
 var _elm_lang$svg$Svg$svgNamespace = A2(
 	_elm_lang$virtual_dom$VirtualDom$property,
@@ -7493,7 +7841,6 @@ var _elm_lang$svg$Svg$filter = _elm_lang$svg$Svg$node('filter');
 var _elm_lang$svg$Svg$script = _elm_lang$svg$Svg$node('script');
 var _elm_lang$svg$Svg$style = _elm_lang$svg$Svg$node('style');
 var _elm_lang$svg$Svg$view = _elm_lang$svg$Svg$node('view');
-
 var _elm_lang$svg$Svg_Attributes$writingMode = _elm_lang$virtual_dom$VirtualDom$attribute('writing-mode');
 var _elm_lang$svg$Svg_Attributes$wordSpacing = _elm_lang$virtual_dom$VirtualDom$attribute('word-spacing');
 var _elm_lang$svg$Svg_Attributes$visibility = _elm_lang$virtual_dom$VirtualDom$attribute('visibility');
@@ -7747,7 +8094,6 @@ var _elm_lang$svg$Svg_Attributes$additive = _elm_lang$virtual_dom$VirtualDom$att
 var _elm_lang$svg$Svg_Attributes$accumulate = _elm_lang$virtual_dom$VirtualDom$attribute('accumulate');
 var _elm_lang$svg$Svg_Attributes$accelerate = _elm_lang$virtual_dom$VirtualDom$attribute('accelerate');
 var _elm_lang$svg$Svg_Attributes$accentHeight = _elm_lang$virtual_dom$VirtualDom$attribute('accent-height');
-
 var _elm_lang$window$Native_Window = function()
 {
 
@@ -7762,8 +8108,7 @@ return {
 	size: size
 };
 
-}();
-var _elm_lang$window$Window_ops = _elm_lang$window$Window_ops || {};
+}();var _elm_lang$window$Window_ops = _elm_lang$window$Window_ops || {};
 _elm_lang$window$Window_ops['&>'] = F2(
 	function (t1, t2) {
 		return A2(
@@ -7869,18 +8214,13 @@ var _elm_lang$window$Window$subMap = F2(
 			});
 	});
 _elm_lang$core$Native_Platform.effectManagers['Window'] = {pkg: 'elm-lang/window', init: _elm_lang$window$Window$init, onEffects: _elm_lang$window$Window$onEffects, onSelfMsg: _elm_lang$window$Window$onSelfMsg, tag: 'sub', subMap: _elm_lang$window$Window$subMap};
-
-var _user$project$Types$Input = F4(
-	function (a, b, c, d) {
-		return {space: a, dir1: b, dir2: c, delta: d};
-	});
 var _user$project$Types$Position = F2(
 	function (a, b) {
 		return {x: a, y: b};
 	});
 var _user$project$Types$Force = F2(
 	function (a, b) {
-		return {magnitudeX: a, magnitudeY: b};
+		return {x: a, y: b};
 	});
 var _user$project$Types$Scalar = function (a) {
 	return {size: a};
@@ -7890,29 +8230,100 @@ var _user$project$Types$Mass = function (a) {
 };
 var _user$project$Types$Radius = F2(
 	function (a, b) {
-		return {magnitudeX: a, magnitudeY: b};
+		return {x: a, y: b};
 	});
 var _user$project$Types$Velocity = F2(
 	function (a, b) {
-		return {magnitudeX: a, magnitudeY: b};
+		return {x: a, y: b};
 	});
-var _user$project$Types$Sphere = F7(
-	function (a, b, c, d, e, f, g) {
-		return {id: a, position: b, mass: c, diameter: d, velocity: e, aliveFrames: f, merged: g};
-	});
-var _user$project$Types$World = F4(
+var _user$project$Types$Boundary = F4(
 	function (a, b, c, d) {
-		return {spheres: a, gravitationalConstant: b, sphereLimit: c, players: d};
+		return {x1: a, x2: b, y1: c, y2: d};
 	});
-var _user$project$Types$Constant = function (a) {
-	return {size: a};
+var _user$project$Types$Weapon = F2(
+	function (a, b) {
+		return {weaponType: a, force: b};
+	});
+var _user$project$Types$Sphere = F9(
+	function (a, b, c, d, e, f, g, h, i) {
+		return {id: a, position: b, mass: c, diameter: d, velocity: e, aliveFrames: f, scale: g, merged: h, hitType: i};
+	});
+var _user$project$Types$World = function (a) {
+	return function (b) {
+		return function (c) {
+			return function (d) {
+				return function (e) {
+					return function (f) {
+						return function (g) {
+							return function (h) {
+								return function (i) {
+									return function (j) {
+										return function (k) {
+											return {spheres: a, players: b, state: c, graphicSettings: d, leftSideLine: e, rightSideLine: f, physicsSettings: g, gameSettings: h, winStates: i, innerContainer: j, outerContainer: k};
+										};
+									};
+								};
+							};
+						};
+					};
+				};
+			};
+		};
+	};
 };
-var _user$project$Types$Player = F6(
-	function (a, b, c, d, e, f) {
-		return {name: a, position: b, side: c, score: d, size: e, velocity: f};
+var _user$project$Types$Player = function (a) {
+	return function (b) {
+		return function (c) {
+			return function (d) {
+				return function (e) {
+					return function (f) {
+						return function (g) {
+							return function (h) {
+								return function (i) {
+									return function (j) {
+										return function (k) {
+											return function (l) {
+												return function (m) {
+													return {number: a, position: b, side: c, score: d, size: e, velocity: f, upAction: g, downAction: h, mass: i, selectedWeapon: j, ammo: k, weapons: l, weaponLastFired: m};
+												};
+											};
+										};
+									};
+								};
+							};
+						};
+					};
+				};
+			};
+		};
+	};
+};
+var _user$project$Types$WinStates = F2(
+	function (a, b) {
+		return {gameWinState: a, setWinState: b};
 	});
-var _user$project$Types$Pause = {ctor: 'Pause'};
-var _user$project$Types$Play = {ctor: 'Play'};
+var _user$project$Types$GameSettings = F6(
+	function (a, b, c, d, e, f) {
+		return {scoreForGame: a, scoreForSet: b, maxShotSize: c, minShotSize: d, shotTimeFactor: e, sphereLimit: f};
+	});
+var _user$project$Types$GraphicSettings = F2(
+	function (a, b) {
+		return {graphicWidth: a, graphicHeight: b};
+	});
+var _user$project$Types$PhysicsSettings = F4(
+	function (a, b, c, d) {
+		return {gravitationalConstant: a, boundaryDampner: b, maxSphereVelocity: c, maxSphereSize: d};
+	});
+var _user$project$Types$SideLine = F5(
+	function (a, b, c, d, e) {
+		return {side: a, x1: b, x2: c, y1: d, y2: e};
+	});
+var _user$project$Types$KeyUp = function (a) {
+	return {ctor: 'KeyUp', _0: a};
+};
+var _user$project$Types$KeyDown = function (a) {
+	return {ctor: 'KeyDown', _0: a};
+};
 var _user$project$Types$WindowSize = function (a) {
 	return {ctor: 'WindowSize', _0: a};
 };
@@ -7922,9 +8333,68 @@ var _user$project$Types$Click = function (a) {
 var _user$project$Types$Tick = function (a) {
 	return {ctor: 'Tick', _0: a};
 };
+var _user$project$Types$Bouncer = {ctor: 'Bouncer'};
+var _user$project$Types$Field = {ctor: 'Field'};
+var _user$project$Types$Shotgun = {ctor: 'Shotgun'};
+var _user$project$Types$Normal = {ctor: 'Normal'};
 var _user$project$Types$Right = {ctor: 'Right'};
 var _user$project$Types$Left = {ctor: 'Left'};
-
+var _user$project$Types$RightWin = {ctor: 'RightWin'};
+var _user$project$Types$LeftWin = {ctor: 'LeftWin'};
+var _user$project$Types$NoWin = {ctor: 'NoWin'};
+var _user$project$Types$None = {ctor: 'None'};
+var _user$project$Types$RightPlayer = {ctor: 'RightPlayer'};
+var _user$project$Types$LeftPlayer = {ctor: 'LeftPlayer'};
+var _user$project$Types$NotPressed = {ctor: 'NotPressed'};
+var _user$project$Types$Pressed = {ctor: 'Pressed'};
+var _user$project$Types$Down = {ctor: 'Down'};
+var _user$project$Types$Up = {ctor: 'Up'};
+var _user$project$Types$Pause = {ctor: 'Pause'};
+var _user$project$Types$Play = {ctor: 'Play'};
+var _user$project$Types$Two = {ctor: 'Two'};
+var _user$project$Types$One = {ctor: 'One'};
+var _user$project$Config$sideLineWidth = 1;
+var _user$project$Config$sideLineOffset = 40;
+var _user$project$Config$graphicHeight = 600;
+var _user$project$Config$graphicWidth = 1000;
+var _user$project$Config$sideOffset = 10;
+var _user$project$Config$containerBorder = 6;
+var _user$project$Config$containerOffset = 20;
+var _user$project$Config$innerContainerX1 = _user$project$Config$containerBorder + _user$project$Config$containerOffset;
+var _user$project$Config$innerContainerX2 = (_user$project$Config$graphicWidth - _user$project$Config$containerBorder) - _user$project$Config$containerOffset;
+var _user$project$Config$sideLinePosistion = function (side) {
+	var _p0 = side;
+	if (_p0.ctor === 'Left') {
+		return _user$project$Config$innerContainerX1 + _user$project$Config$sideLineOffset;
+	} else {
+		return _user$project$Config$innerContainerX2 - _user$project$Config$sideLineOffset;
+	}
+};
+var _user$project$Config$playerSideLinePosistion = F2(
+	function (side, width) {
+		var _p1 = side;
+		if (_p1.ctor === 'Left') {
+			return _user$project$Config$sideLinePosistion(side) - width;
+		} else {
+			return _user$project$Config$sideLinePosistion(side);
+		}
+	});
+var _user$project$Config$innerContainerY1 = (_user$project$Config$containerBorder / 2) + _user$project$Config$containerOffset;
+var _user$project$Config$innerContainerY2 = (_user$project$Config$graphicHeight - (_user$project$Config$containerBorder / 2)) - _user$project$Config$containerOffset;
+var _user$project$Config$outerContainerX1 = _user$project$Config$containerOffset;
+var _user$project$Config$outerContainerX2 = _user$project$Config$graphicWidth - _user$project$Config$containerOffset;
+var _user$project$Config$outerContainerY1 = _user$project$Config$containerOffset;
+var _user$project$Config$outerContainerY2 = _user$project$Config$graphicHeight - _user$project$Config$containerOffset;
+var _user$project$Config$playerHeightPercent = 10;
+var _user$project$Config$playerWidth = 5;
+var _user$project$View$playerColor = function (side) {
+	var _p0 = side;
+	if (_p0.ctor === 'Left') {
+		return 'blue';
+	} else {
+		return 'red';
+	}
+};
 var _user$project$View$outerSphereColour = A2(
 	_elm_lang$svg$Svg$stop,
 	_elm_lang$core$Native_List.fromArray(
@@ -7958,7 +8428,178 @@ var _user$project$View$sphereGradientColour = A2(
 		]),
 	_elm_lang$core$Native_List.fromArray(
 		[_user$project$View$innerSphereColour, _user$project$View$outerSphereColour]));
-var _user$project$View$createCircle = function (sphere) {
+var _user$project$View$renderMessage = F2(
+	function (message, world) {
+		return A2(
+			_elm_lang$svg$Svg$text$,
+			_elm_lang$core$Native_List.fromArray(
+				[
+					_elm_lang$svg$Svg_Attributes$x(
+					A2(
+						_elm_lang$core$Basics_ops['++'],
+						_elm_lang$core$Basics$toString(world.outerContainer.x2 / 2),
+						'px')),
+					_elm_lang$svg$Svg_Attributes$y(
+					A2(
+						_elm_lang$core$Basics_ops['++'],
+						_elm_lang$core$Basics$toString(world.outerContainer.y2 / 2),
+						'px')),
+					_elm_lang$svg$Svg_Attributes$fill('blue'),
+					_elm_lang$svg$Svg_Attributes$opacity('0.6')
+				]),
+			_elm_lang$core$Native_List.fromArray(
+				[
+					_elm_lang$svg$Svg$text(message)
+				]));
+	});
+var _user$project$View$renderStateMessage = F2(
+	function (world, svgs) {
+		return _elm_lang$core$Native_Utils.eq(world.state, _user$project$Types$Pause) ? A2(
+			_elm_lang$core$List$append,
+			_elm_lang$core$Native_List.fromArray(
+				[
+					A2(_user$project$View$renderMessage, 'Paused', world)
+				]),
+			svgs) : svgs;
+	});
+var _user$project$View$renderPlayer = F3(
+	function (player, sideLine, world) {
+		return A2(
+			_elm_lang$svg$Svg$rect,
+			_elm_lang$core$Native_List.fromArray(
+				[
+					_elm_lang$svg$Svg_Attributes$x(
+					_elm_lang$core$Basics$toString(player.position.x)),
+					_elm_lang$svg$Svg_Attributes$y(
+					_elm_lang$core$Basics$toString(player.position.y)),
+					_elm_lang$svg$Svg_Attributes$width(
+					_elm_lang$core$Basics$toString(_user$project$Config$playerWidth)),
+					_elm_lang$svg$Svg_Attributes$height(
+					_elm_lang$core$Basics$toString(player.size)),
+					_elm_lang$svg$Svg_Attributes$fill(
+					_user$project$View$playerColor(player.side)),
+					_elm_lang$svg$Svg_Attributes$fillOpacity('0.5'),
+					_elm_lang$svg$Svg_Attributes$stroke(
+					_user$project$View$playerColor(player.side)),
+					_elm_lang$svg$Svg_Attributes$strokeWidth('2'),
+					_elm_lang$svg$Svg_Attributes$strokeOpacity('1')
+				]),
+			_elm_lang$core$Native_List.fromArray(
+				[]));
+	});
+var _user$project$View$getSideLine = F2(
+	function (side, world) {
+		var _p1 = side;
+		if (_p1.ctor === 'Left') {
+			return world.leftSideLine;
+		} else {
+			return world.rightSideLine;
+		}
+	});
+var _user$project$View$renderPlayers = F2(
+	function (players, world) {
+		return A2(
+			_elm_lang$core$List$map,
+			function (e) {
+				return A3(
+					_user$project$View$renderPlayer,
+					e,
+					A2(_user$project$View$getSideLine, e.side, world),
+					world);
+			},
+			players);
+	});
+var _user$project$View$renderSideLine = function (sideline) {
+	return A2(
+		_elm_lang$svg$Svg$line,
+		_elm_lang$core$Native_List.fromArray(
+			[
+				_elm_lang$svg$Svg_Attributes$x1(
+				_elm_lang$core$Basics$toString(sideline.x1)),
+				_elm_lang$svg$Svg_Attributes$x2(
+				_elm_lang$core$Basics$toString(sideline.x2)),
+				_elm_lang$svg$Svg_Attributes$y1(
+				_elm_lang$core$Basics$toString(sideline.y1)),
+				_elm_lang$svg$Svg_Attributes$y2(
+				_elm_lang$core$Basics$toString(sideline.y2)),
+				_elm_lang$svg$Svg_Attributes$stroke(
+				_user$project$View$playerColor(sideline.side)),
+				_elm_lang$svg$Svg_Attributes$strokeWidth('1'),
+				_elm_lang$svg$Svg_Attributes$strokeOpacity('0.6')
+			]),
+		_elm_lang$core$Native_List.fromArray(
+			[]));
+};
+var _user$project$View$renderSideLines = function (world) {
+	return _elm_lang$core$Native_List.fromArray(
+		[
+			_user$project$View$renderSideLine(world.leftSideLine),
+			_user$project$View$renderSideLine(world.rightSideLine)
+		]);
+};
+var _user$project$View$outerBorderY = F3(
+	function (side, height, world) {
+		var _p2 = side;
+		if (_p2.ctor === 'Left') {
+			return (world.outerContainer.y2 - (_user$project$Config$containerBorder / 2)) - height;
+		} else {
+			return (world.outerContainer.y2 - (_user$project$Config$containerBorder / 2)) - height;
+		}
+	});
+var _user$project$View$outerBorderX = F2(
+	function (side, world) {
+		var _p3 = side;
+		if (_p3.ctor === 'Left') {
+			return world.outerContainer.x1 + (_user$project$Config$containerBorder / 2);
+		} else {
+			return (world.outerContainer.x2 - (_user$project$Config$containerBorder / 2)) - _user$project$View$scoreWidth(world);
+		}
+	});
+var _user$project$View$scoreWidth = function (world) {
+	return world.leftSideLine.x1 - A2(_user$project$View$outerBorderX, _user$project$Types$Left, world);
+};
+var _user$project$View$scoreHeight = F2(
+	function (innerContainer, player) {
+		return (player.score / 100) * (innerContainer.y2 - innerContainer.y1);
+	});
+var _user$project$View$renderScore = F2(
+	function (world, player) {
+		return A2(
+			_elm_lang$svg$Svg$rect,
+			_elm_lang$core$Native_List.fromArray(
+				[
+					_elm_lang$svg$Svg_Attributes$x(
+					_elm_lang$core$Basics$toString(
+						A2(_user$project$View$outerBorderX, player.side, world))),
+					_elm_lang$svg$Svg_Attributes$y(
+					_elm_lang$core$Basics$toString(
+						A3(
+							_user$project$View$outerBorderY,
+							player.side,
+							A2(_user$project$View$scoreHeight, world.innerContainer, player),
+							world))),
+					_elm_lang$svg$Svg_Attributes$width(
+					_elm_lang$core$Basics$toString(
+						_user$project$View$scoreWidth(world))),
+					_elm_lang$svg$Svg_Attributes$height(
+					_elm_lang$core$Basics$toString(
+						A2(_user$project$View$scoreHeight, world.innerContainer, player))),
+					_elm_lang$svg$Svg_Attributes$fill(
+					_user$project$View$playerColor(player.side)),
+					_elm_lang$svg$Svg_Attributes$fillOpacity('0.1')
+				]),
+			_elm_lang$core$Native_List.fromArray(
+				[]));
+	});
+var _user$project$View$renderScores = function (world) {
+	return A2(
+		_elm_lang$core$List$map,
+		function (e) {
+			return A2(_user$project$View$renderScore, world, e);
+		},
+		world.players);
+};
+var _user$project$View$renderCircle = function (sphere) {
 	return A2(
 		_elm_lang$svg$Svg$circle,
 		_elm_lang$core$Native_List.fromArray(
@@ -7968,46 +8609,64 @@ var _user$project$View$createCircle = function (sphere) {
 				_elm_lang$svg$Svg_Attributes$cy(
 				_elm_lang$core$Basics$toString(sphere.position.y)),
 				_elm_lang$svg$Svg_Attributes$r(
-				_elm_lang$core$Basics$toString(sphere.diameter)),
+				_elm_lang$core$Basics$toString(sphere.diameter / 2)),
 				_elm_lang$svg$Svg_Attributes$fill('url(#grad1)')
 			]),
 		_elm_lang$core$Native_List.fromArray(
 			[_user$project$View$sphereGradientColour]));
 };
-var _user$project$View$createCircles = function (world) {
+var _user$project$View$renderCircles = function (world) {
 	return A2(
 		_elm_lang$core$List$map,
 		function (e) {
-			return _user$project$View$createCircle(e);
+			return _user$project$View$renderCircle(e);
 		},
 		world.spheres);
 };
-var _user$project$View$graphicHeight = 600;
-var _user$project$View$graphicWidth = 1000;
-var _user$project$View$graphicContainer = function (model) {
-	var offsetY = 10;
-	var offsetX = 10;
+var _user$project$View$renderWorldObjects = function (world) {
+	return A2(
+		_user$project$View$renderStateMessage,
+		world,
+		function (e) {
+			return A2(
+				_elm_lang$core$List$append,
+				e,
+				_user$project$View$renderScores(world));
+		}(
+			function (e) {
+				return A2(
+					_elm_lang$core$List$append,
+					e,
+					_user$project$View$renderSideLines(world));
+			}(
+				function (e) {
+					return A2(
+						_elm_lang$core$List$append,
+						e,
+						A2(_user$project$View$renderPlayers, world.players, world));
+				}(
+					_user$project$View$renderCircles(world)))));
+};
+var _user$project$View$graphicContainer = function (world) {
 	return A2(
 		_elm_lang$svg$Svg$rect,
 		_elm_lang$core$Native_List.fromArray(
 			[
 				_elm_lang$svg$Svg_Attributes$x(
-				_elm_lang$core$Basics$toString(offsetX)),
+				_elm_lang$core$Basics$toString(world.outerContainer.x1)),
 				_elm_lang$svg$Svg_Attributes$y(
-				_elm_lang$core$Basics$toString(offsetY)),
+				_elm_lang$core$Basics$toString(world.outerContainer.y1)),
 				_elm_lang$svg$Svg_Attributes$width(
-				_elm_lang$core$Basics$toString(
-					function (a) {
-						return a - (offsetX * 2);
-					}(_user$project$View$graphicWidth))),
+				_elm_lang$core$Basics$toString(world.outerContainer.x2 - world.outerContainer.x1)),
 				_elm_lang$svg$Svg_Attributes$height(
-				_elm_lang$core$Basics$toString(
-					function (a) {
-						return a - (offsetY * 2);
-					}(_user$project$View$graphicHeight))),
+				_elm_lang$core$Basics$toString(world.outerContainer.y2 - world.outerContainer.y1)),
 				_elm_lang$svg$Svg_Attributes$fill('none'),
 				_elm_lang$svg$Svg_Attributes$stroke('blue'),
-				_elm_lang$svg$Svg_Attributes$strokeWidth('6'),
+				_elm_lang$svg$Svg_Attributes$strokeWidth(
+				A2(
+					_elm_lang$core$Basics_ops['++'],
+					_elm_lang$core$Basics$toString(_user$project$Config$containerBorder),
+					'px')),
 				_elm_lang$svg$Svg_Attributes$strokeOpacity('0.2')
 			]),
 		_elm_lang$core$Native_List.fromArray(
@@ -8019,9 +8678,9 @@ var _user$project$View$view = function (model) {
 		_elm_lang$core$Native_List.fromArray(
 			[
 				_elm_lang$svg$Svg_Attributes$width(
-				_elm_lang$core$Basics$toString(_user$project$View$graphicWidth)),
+				_elm_lang$core$Basics$toString(_user$project$Config$graphicWidth)),
 				_elm_lang$svg$Svg_Attributes$height(
-				_elm_lang$core$Basics$toString(_user$project$View$graphicHeight)),
+				_elm_lang$core$Basics$toString(_user$project$Config$graphicHeight)),
 				_elm_lang$svg$Svg_Attributes$style('background-color: none')
 			]),
 		A2(
@@ -8031,12 +8690,959 @@ var _user$project$View$view = function (model) {
 					_user$project$View$sphereGradientColour,
 					_user$project$View$graphicContainer(model)
 				]),
-			_user$project$View$createCircles(model)));
+			_user$project$View$renderWorldObjects(model)));
 };
-
+var _user$project$States$subscriptions = function (world) {
+	return _elm_lang$core$Platform_Sub$batch(
+		_elm_lang$core$Native_List.fromArray(
+			[
+				_elm_lang$animation_frame$AnimationFrame$diffs(_user$project$Types$Tick),
+				_elm_lang$keyboard$Keyboard$downs(_user$project$Types$KeyDown),
+				_elm_lang$keyboard$Keyboard$ups(_user$project$Types$KeyUp),
+				_elm_lang$mouse$Mouse$clicks(_user$project$Types$Click),
+				_elm_lang$window$Window$resizes(_user$project$Types$WindowSize)
+			]));
+};
+var _user$project$States$defaultWorld = {
+	ctor: '_Tuple2',
+	_0: {
+		spheres: _elm_lang$core$Native_List.fromArray(
+			[]),
+		players: _elm_lang$core$Native_List.fromArray(
+			[
+				{
+				number: _user$project$Types$One,
+				position: {
+					x: A2(_user$project$Config$playerSideLinePosistion, _user$project$Types$Left, _user$project$Config$playerWidth),
+					y: _user$project$Config$graphicHeight / 2
+				},
+				side: _user$project$Types$Left,
+				score: 0,
+				size: 60,
+				velocity: {x: 0, y: 0},
+				upAction: _user$project$Types$NotPressed,
+				downAction: _user$project$Types$NotPressed,
+				mass: {size: 10},
+				selectedWeapon: _user$project$Types$Normal,
+				ammo: 10,
+				weapons: _elm_lang$core$Native_List.fromArray(
+					[
+						{
+						weaponType: _user$project$Types$Normal,
+						force: {x: 1, y: 0}
+					}
+					]),
+				weaponLastFired: 0
+			},
+				{
+				number: _user$project$Types$Two,
+				position: {
+					x: A2(_user$project$Config$playerSideLinePosistion, _user$project$Types$Right, _user$project$Config$playerWidth),
+					y: _user$project$Config$graphicHeight / 2
+				},
+				side: _user$project$Types$Right,
+				score: 0,
+				size: 60,
+				velocity: {x: 0, y: 0},
+				upAction: _user$project$Types$NotPressed,
+				downAction: _user$project$Types$NotPressed,
+				mass: {size: 10},
+				selectedWeapon: _user$project$Types$Normal,
+				ammo: 10,
+				weapons: _elm_lang$core$Native_List.fromArray(
+					[
+						{
+						weaponType: _user$project$Types$Normal,
+						force: {x: 1, y: 0}
+					}
+					]),
+				weaponLastFired: 0
+			}
+			]),
+		state: _user$project$Types$Play,
+		graphicSettings: {graphicWidth: _user$project$Config$graphicWidth, graphicHeight: _user$project$Config$graphicHeight},
+		leftSideLine: {
+			side: _user$project$Types$Left,
+			x1: _user$project$Config$sideLinePosistion(_user$project$Types$Left),
+			x2: _user$project$Config$sideLinePosistion(_user$project$Types$Left),
+			y1: _user$project$Config$innerContainerY1,
+			y2: _user$project$Config$innerContainerY2
+		},
+		rightSideLine: {
+			side: _user$project$Types$Right,
+			x1: _user$project$Config$sideLinePosistion(_user$project$Types$Right),
+			x2: _user$project$Config$sideLinePosistion(_user$project$Types$Right),
+			y1: _user$project$Config$innerContainerY1,
+			y2: _user$project$Config$innerContainerY2
+		},
+		physicsSettings: {gravitationalConstant: 10, boundaryDampner: 0.95, maxSphereVelocity: 10, maxSphereSize: 200},
+		gameSettings: {scoreForGame: 500, scoreForSet: 5, maxShotSize: 45, minShotSize: 20, shotTimeFactor: 1.0e-2, sphereLimit: 40},
+		winStates: {gameWinState: _user$project$Types$NoWin, setWinState: _user$project$Types$NoWin},
+		innerContainer: {x1: _user$project$Config$innerContainerX1, x2: _user$project$Config$innerContainerX2, y1: _user$project$Config$innerContainerY1, y2: _user$project$Config$innerContainerY2},
+		outerContainer: {x1: _user$project$Config$outerContainerX1, x2: _user$project$Config$outerContainerX2, y1: _user$project$Config$outerContainerY1, y2: _user$project$Config$outerContainerY2}
+	},
+	_1: _elm_lang$core$Platform_Cmd$none
+};
+var _user$project$Update$removeMergedSpheres = function (spheres) {
+	return A2(
+		_elm_lang$core$List$filter,
+		function (e) {
+			return _elm_lang$core$Native_Utils.eq(e.merged, false);
+		},
+		spheres);
+};
+var _user$project$Update$markAsMerged = function (sphere) {
+	return _elm_lang$core$Native_Utils.update(
+		sphere,
+		{merged: true});
+};
+var _user$project$Update$groupFunction = F2(
+	function (func, objects) {
+		return objects;
+	});
+var _user$project$Update$filterNothings = function (list) {
+	return A2(_elm_lang$core$List$filterMap, _elm_lang$core$Basics$identity, list);
+};
+var _user$project$Update$square = function (n) {
+	return Math.pow(n, 2);
+};
+var _user$project$Update$sphereRadius = function (sphere) {
+	return sphere.diameter / 2;
+};
+var _user$project$Update$calculateDiameter = F2(
+	function (scale, mass) {
+		return A2(
+			F2(
+				function (x, y) {
+					return x * y;
+				}),
+			scale,
+			_elm_lang$core$Basics$sqrt(mass / _elm_lang$core$Basics$pi));
+	});
+var _user$project$Update$updateDiameter = F2(
+	function (scale, sphere) {
+		return _elm_lang$core$Native_Utils.update(
+			sphere,
+			{
+				diameter: A2(_user$project$Update$calculateDiameter, scale, sphere.mass.size)
+			});
+	});
+var _user$project$Update$sumY = function (forces) {
+	return _elm_lang$core$List$sum(
+		A2(
+			_elm_lang$core$List$map,
+			function (f) {
+				return f.y;
+			},
+			forces));
+};
+var _user$project$Update$sumX = function (forces) {
+	return _elm_lang$core$List$sum(
+		A2(
+			_elm_lang$core$List$map,
+			function (f) {
+				return f.x;
+			},
+			forces));
+};
+var _user$project$Update$limitSphereVelocity = F2(
+	function (settings, velocity) {
+		return A3(
+			_elm_lang$core$Basics$clamp,
+			_elm_lang$core$Basics$negate(settings.maxSphereVelocity),
+			settings.maxSphereVelocity,
+			velocity);
+	});
+var _user$project$Update$updateVelocityForForces = F4(
+	function (settings, velocity, mass, forces) {
+		return _elm_lang$core$Native_Utils.update(
+			velocity,
+			{
+				x: velocity.x + (_user$project$Update$sumX(forces) / mass),
+				y: velocity.y + (_user$project$Update$sumY(forces) / mass)
+			});
+	});
+var _user$project$Update$applyForcesToObject = F3(
+	function (settings, sphere, forces) {
+		return _elm_lang$core$Native_Utils.update(
+			sphere,
+			{
+				velocity: A4(_user$project$Update$updateVelocityForForces, settings, sphere.velocity, sphere.mass.size, forces)
+			});
+	});
+var _user$project$Update$euclideanDistance = F2(
+	function (positionA, positionB) {
+		return _elm_lang$core$Basics$sqrt(
+			_user$project$Update$square(positionB.x - positionA.x) + _user$project$Update$square(positionB.y - positionA.y));
+	});
+var _user$project$Update$hasCollided = F2(
+	function (sphereA, sphereB) {
+		return A2(
+			F2(
+				function (x, y) {
+					return _elm_lang$core$Native_Utils.cmp(x, y) < 0;
+				}),
+			A2(_user$project$Update$euclideanDistance, sphereA.position, sphereB.position),
+			_user$project$Update$sphereRadius(sphereA) + _user$project$Update$sphereRadius(sphereB));
+	});
+var _user$project$Update$collidedSpheres = F2(
+	function (sphere, otherSpheres) {
+		return A2(
+			_elm_lang$core$List$filter,
+			function (e) {
+				return _elm_lang$core$Native_Utils.cmp(
+					A2(_user$project$Update$euclideanDistance, sphere.position, e.position),
+					sphere.diameter + e.diameter) < 0;
+			},
+			otherSpheres);
+	});
+var _user$project$Update$calculateGravitationScalar = F4(
+	function (gravConst, mass1, mass2, distance) {
+		return {
+			size: ((mass1.size * mass2.size) / Math.pow(distance, 2)) * (0 - gravConst)
+		};
+	});
+var _user$project$Update$emptyForce = {x: 0, y: 0};
+var _user$project$Update$calculateGravitation = F4(
+	function (settings, dt, sphereA, sphereB) {
+		var distance = A2(_user$project$Update$euclideanDistance, sphereA.position, sphereB.position);
+		var force = A4(_user$project$Update$calculateGravitationScalar, settings.gravitationalConstant, sphereA.mass, sphereB.mass, distance);
+		return ((_elm_lang$core$Native_Utils.cmp(distance, sphereA.diameter) < 0) && (_elm_lang$core$Native_Utils.cmp(distance, sphereB.diameter) < 0)) ? _user$project$Update$emptyForce : {x: (dt * force.size) * ((sphereA.position.x - sphereB.position.x) / distance), y: (dt * force.size) * ((sphereA.position.y - sphereB.position.y) / distance)};
+	});
+var _user$project$Update$applyGravitationForAll = F4(
+	function (settings, dt, sphereA, spheres) {
+		return A3(
+			_user$project$Update$applyForcesToObject,
+			settings,
+			sphereA,
+			A2(
+				_elm_lang$core$List$map,
+				function (s) {
+					return A4(_user$project$Update$calculateGravitation, settings, dt, sphereA, s);
+				},
+				A2(
+					_elm_lang$core$List$filter,
+					function (s) {
+						return !_elm_lang$core$Native_Utils.eq(s, sphereA);
+					},
+					spheres)));
+	});
+var _user$project$Update$filterSpheres = F2(
+	function (sphere, spheres) {
+		return A2(
+			_elm_lang$core$List$filter,
+			function (e1) {
+				return !_elm_lang$core$Native_Utils.eq(e1, sphere);
+			},
+			spheres);
+	});
+var _user$project$Update$calculateNewPosistion = F2(
+	function (velocity, position) {
+		return {x: velocity.x + position.x, y: velocity.y + position.y};
+	});
+var _user$project$Update$calculateNewVelocityInAxis = F8(
+	function (massA, massB, velocityA, velocityB, massA$, massB$, velocityA$, velocityB$) {
+		var momentumBefore = (massA * velocityA) + (massB * velocityB);
+		return momentumBefore / massA$;
+	});
+var _user$project$Update$calculateMomentum = F2(
+	function (mass, velocity) {
+		return mass * velocity;
+	});
+var _user$project$Update$updatePlayerPosistion = function (player) {
+	return _elm_lang$core$Native_Utils.update(
+		player,
+		{
+			position: A2(_user$project$Update$calculateNewPosistion, player.velocity, player.position)
+		});
+};
+var _user$project$Update$updateSpherePosistion = function (sphere) {
+	return _elm_lang$core$Native_Utils.update(
+		sphere,
+		{
+			position: A2(_user$project$Update$calculateNewPosistion, sphere.velocity, sphere.position)
+		});
+};
+var _user$project$Update$mergePosition = F2(
+	function (positionA, positionB) {
+		return _elm_lang$core$Native_Utils.update(
+			positionA,
+			{x: positionA.x + (positionB.x - positionA.x), y: positionA.y + (positionB.y - positionA.y)});
+	});
+var _user$project$Update$calculateNewVelocity = F4(
+	function (sphereAPrior, sphereBPrior, sphereAPost, sphereBPost) {
+		return {
+			x: A8(_user$project$Update$calculateNewVelocityInAxis, sphereAPrior.mass.size, sphereBPrior.mass.size, sphereAPrior.velocity.x, sphereBPrior.velocity.x, sphereAPost.mass.size, sphereBPost.mass.size, sphereAPost.velocity.x, sphereBPost.velocity.x),
+			y: A8(_user$project$Update$calculateNewVelocityInAxis, sphereAPrior.mass.size, sphereBPrior.mass.size, sphereAPrior.velocity.y, sphereBPrior.velocity.y, sphereAPost.mass.size, sphereBPost.mass.size, sphereAPost.velocity.y, sphereBPost.velocity.y)
+		};
+	});
+var _user$project$Update$updateVelocity = F4(
+	function (sphereAPrior, sphereBPrior, sphereAPost, sphereBPost) {
+		return _elm_lang$core$Native_Utils.update(
+			sphereAPost,
+			{
+				velocity: A4(_user$project$Update$calculateNewVelocity, sphereAPrior, sphereBPrior, sphereAPost, sphereBPost)
+			});
+	});
+var _user$project$Update$sumMass = F2(
+	function (massA, massB) {
+		return _elm_lang$core$Native_Utils.update(
+			massA,
+			{size: massA.size + massB.size});
+	});
+var _user$project$Update$limitSphereMass = F2(
+	function (world, mass) {
+		return _elm_lang$core$Native_Utils.update(
+			mass,
+			{
+				size: A3(_elm_lang$core$Basics$clamp, 0, world.physicsSettings.maxSphereSize, mass.size)
+			});
+	});
+var _user$project$Update$mergeSphere = F3(
+	function (world, sphereA, sphereB) {
+		var sphereBPost = _elm_lang$core$Native_Utils.update(
+			sphereB,
+			{
+				mass: {size: 0},
+				position: {x: 0, y: 0},
+				velocity: {x: 0, y: 0}
+			});
+		var sphereAPost = _elm_lang$core$Native_Utils.update(
+			sphereA,
+			{
+				mass: A2(
+					_user$project$Update$limitSphereMass,
+					world,
+					A2(_user$project$Update$sumMass, sphereA.mass, sphereB.mass)),
+				position: A2(_user$project$Update$mergePosition, sphereA.position, sphereB.position)
+			});
+		return A2(
+			_user$project$Update$updateDiameter,
+			sphereA.scale,
+			A4(_user$project$Update$updateVelocity, sphereA, sphereB, sphereAPost, sphereBPost));
+	});
+var _user$project$Update$mergeSpheres = F3(
+	function (world, testSphere, otherSpheres) {
+		var spheresCollided = A2(_user$project$Update$collidedSpheres, testSphere, otherSpheres);
+		return _elm_lang$core$List$isEmpty(spheresCollided) ? testSphere : ((A2(
+			_elm_lang$core$List$any,
+			function (f) {
+				return _elm_lang$core$Native_Utils.cmp(f.mass.size, testSphere.mass.size) > 0;
+			},
+			spheresCollided) || A2(
+			_elm_lang$core$List$any,
+			function (f) {
+				return _elm_lang$core$Native_Utils.eq(f.mass.size, testSphere.mass.size) && (_elm_lang$core$Native_Utils.cmp(f.aliveFrames, testSphere.aliveFrames) > 0);
+			},
+			spheresCollided)) ? _user$project$Update$markAsMerged(testSphere) : A3(
+			_elm_lang$core$List$foldl,
+			_user$project$Update$mergeSphere(world),
+			testSphere,
+			spheresCollided));
+	});
+var _user$project$Update$applySphereCollisions = F2(
+	function (world, spheres) {
+		return _user$project$Update$removeMergedSpheres(
+			A2(
+				_elm_lang$core$List$map,
+				function (e) {
+					return A3(
+						_user$project$Update$mergeSpheres,
+						world,
+						e,
+						A2(
+							_elm_lang$core$List$filter,
+							function (e1) {
+								return !_elm_lang$core$Native_Utils.eq(e1, e);
+							},
+							spheres));
+				},
+				spheres));
+	});
+var _user$project$Update$playerOutOfBounds = F2(
+	function (world, player) {
+		return (_elm_lang$core$Native_Utils.cmp(player.position.y, world.innerContainer.y1) < 0) || (_elm_lang$core$Native_Utils.cmp(player.position.y + player.size, world.innerContainer.y2) > 0);
+	});
+var _user$project$Update$limitPlayerBoundary = F2(
+	function (world, player) {
+		return A2(_user$project$Update$playerOutOfBounds, world, player) ? _elm_lang$core$Native_Utils.update(
+			player,
+			{
+				velocity: {x: 0, y: 0},
+				position: {
+					x: player.position.x,
+					y: (_elm_lang$core$Native_Utils.cmp(player.position.y, world.innerContainer.y2 - player.size) > 0) ? (world.innerContainer.y2 - player.size) : world.innerContainer.y1
+				}
+			}) : player;
+	});
+var _user$project$Update$updatePlayerPositions = F2(
+	function (world, players) {
+		return A2(
+			_elm_lang$core$List$map,
+			function (e) {
+				return _user$project$Update$updatePlayerPosistion(e);
+			},
+			A2(
+				_elm_lang$core$List$map,
+				function (e) {
+					return A2(_user$project$Update$limitPlayerBoundary, world, e);
+				},
+				players));
+	});
+var _user$project$Update$makeNegative = function (x) {
+	return _elm_lang$core$Basics$negate(
+		_elm_lang$core$Basics$abs(x));
+};
+var _user$project$Update$makePositive = function (x) {
+	return _elm_lang$core$Basics$abs(x);
+};
+var _user$project$Update$applyHorizontalBoundaryCollisions = F2(
+	function (sphere, world) {
+		return (_elm_lang$core$Native_Utils.cmp(
+			sphere.position.y - _user$project$Update$sphereRadius(sphere),
+			world.leftSideLine.y1) < 0) ? _elm_lang$core$Native_Utils.update(
+			sphere,
+			{
+				velocity: {
+					x: sphere.velocity.x,
+					y: _user$project$Update$makePositive(sphere.velocity.y)
+				}
+			}) : ((_elm_lang$core$Native_Utils.cmp(
+			sphere.position.y + _user$project$Update$sphereRadius(sphere),
+			world.leftSideLine.y2) > 0) ? _elm_lang$core$Native_Utils.update(
+			sphere,
+			{
+				velocity: {
+					x: sphere.velocity.x,
+					y: _user$project$Update$makeNegative(sphere.velocity.y)
+				}
+			}) : sphere);
+	});
+var _user$project$Update$applyBoundaryCollisions = F2(
+	function (world, spheres) {
+		return A2(
+			_elm_lang$core$List$map,
+			function (e) {
+				return A2(_user$project$Update$applyHorizontalBoundaryCollisions, e, world);
+			},
+			spheres);
+	});
+var _user$project$Update$collidedWithPaddle = F3(
+	function (world, sphere, player) {
+		var radius = _user$project$Update$sphereRadius(sphere);
+		var _p0 = player;
+		if (_p0.ctor === 'Nothing') {
+			return false;
+		} else {
+			var _p2 = _p0._0;
+			var _p1 = _p2.side;
+			if (_p1.ctor === 'Left') {
+				return (_elm_lang$core$Native_Utils.cmp(sphere.position.x - radius, world.leftSideLine.x2) < 0) && ((_elm_lang$core$Native_Utils.cmp(sphere.position.y, _p2.position.y + _p2.size) < 0) && (_elm_lang$core$Native_Utils.cmp(sphere.position.y, _p2.position.y) > 0));
+			} else {
+				return (_elm_lang$core$Native_Utils.cmp(sphere.position.x + radius, world.rightSideLine.x1) > 0) && ((_elm_lang$core$Native_Utils.cmp(sphere.position.y, _p2.position.y + _p2.size) < 0) && (_elm_lang$core$Native_Utils.cmp(sphere.position.y, _p2.position.y) > 0));
+			}
+		}
+	});
+var _user$project$Update$findPlayer = F2(
+	function (side, players) {
+		return _elm_lang$core$List$head(
+			A2(
+				_elm_lang$core$List$filter,
+				function (e) {
+					return _elm_lang$core$Native_Utils.eq(e.side, side);
+				},
+				players));
+	});
+var _user$project$Update$sphereDefaultPosition = F3(
+	function (sphere, side, world) {
+		var _p3 = side;
+		if (_p3.ctor === 'Left') {
+			return {
+				x: world.leftSideLine.x2 + _user$project$Update$sphereRadius(sphere),
+				y: sphere.position.y
+			};
+		} else {
+			return {
+				x: world.rightSideLine.x1 - _user$project$Update$sphereRadius(sphere),
+				y: sphere.position.y
+			};
+		}
+	});
+var _user$project$Update$sphereBeyondScoreLine = F3(
+	function (side, sphere, world) {
+		var _p4 = side;
+		if (_p4.ctor === 'Left') {
+			return _elm_lang$core$Native_Utils.cmp(
+				sphere.position.x - _user$project$Update$sphereRadius(sphere),
+				world.leftSideLine.x2) < 0;
+		} else {
+			return _elm_lang$core$Native_Utils.cmp(
+				sphere.position.x + _user$project$Update$sphereRadius(sphere),
+				world.rightSideLine.x1) > 0;
+		}
+	});
+var _user$project$Update$markScoredSphere = F2(
+	function (sphere, world) {
+		return A3(_user$project$Update$sphereBeyondScoreLine, _user$project$Types$Left, sphere, world) ? _elm_lang$core$Native_Utils.update(
+			sphere,
+			{hitType: _user$project$Types$LeftPlayer}) : (A3(_user$project$Update$sphereBeyondScoreLine, _user$project$Types$Right, sphere, world) ? _elm_lang$core$Native_Utils.update(
+			sphere,
+			{hitType: _user$project$Types$RightPlayer}) : sphere);
+	});
+var _user$project$Update$markScoredSpheres = F2(
+	function (spheres, world) {
+		return A2(
+			_elm_lang$core$List$map,
+			function (e) {
+				return A2(_user$project$Update$markScoredSphere, e, world);
+			},
+			spheres);
+	});
+var _user$project$Update$removeScoredSpheres = function (world) {
+	return _elm_lang$core$Native_Utils.update(
+		world,
+		{
+			spheres: A2(
+				_elm_lang$core$List$filter,
+				function (e) {
+					return _elm_lang$core$Native_Utils.eq(e.hitType, _user$project$Types$None);
+				},
+				world.spheres)
+		});
+};
+var _user$project$Update$applyPaddleCollision = F2(
+	function (sphere, world) {
+		return A3(
+			_user$project$Update$collidedWithPaddle,
+			world,
+			sphere,
+			A2(_user$project$Update$findPlayer, _user$project$Types$Left, world.players)) ? _elm_lang$core$Native_Utils.update(
+			sphere,
+			{
+				velocity: {
+					x: _user$project$Update$makePositive(sphere.velocity.x),
+					y: sphere.velocity.y
+				},
+				position: A3(_user$project$Update$sphereDefaultPosition, sphere, _user$project$Types$Left, world)
+			}) : (A3(
+			_user$project$Update$collidedWithPaddle,
+			world,
+			sphere,
+			A2(_user$project$Update$findPlayer, _user$project$Types$Right, world.players)) ? _elm_lang$core$Native_Utils.update(
+			sphere,
+			{
+				velocity: {
+					x: _user$project$Update$makeNegative(sphere.velocity.x),
+					y: sphere.velocity.y
+				},
+				position: A3(_user$project$Update$sphereDefaultPosition, sphere, _user$project$Types$Right, world)
+			}) : sphere);
+	});
+var _user$project$Update$applyPaddleCollisions = F2(
+	function (world, spheres) {
+		return A2(
+			_elm_lang$core$List$map,
+			function (e) {
+				return A2(_user$project$Update$applyPaddleCollision, e, world);
+			},
+			spheres);
+	});
+var _user$project$Update$updateSpherePositions = function (spheres) {
+	return A2(
+		_elm_lang$core$List$map,
+		function (e) {
+			return _user$project$Update$updateSpherePosistion(e);
+		},
+		spheres);
+};
+var _user$project$Update$applyPlayerMovementForce = F2(
+	function (dt, player) {
+		var maxVelocity = 10;
+		var dragPercentage = 0.3;
+		var acceleration = 0.2;
+		var upVelocity = function () {
+			var _p5 = player.upAction;
+			if (_p5.ctor === 'Pressed') {
+				return player.velocity.y - acceleration;
+			} else {
+				return player.velocity.y * dragPercentage;
+			}
+		}();
+		var downVelocity = function () {
+			var _p6 = player.downAction;
+			if (_p6.ctor === 'Pressed') {
+				return player.velocity.y + acceleration;
+			} else {
+				return player.velocity.y * dragPercentage;
+			}
+		}();
+		return _elm_lang$core$Native_Utils.update(
+			player,
+			{
+				velocity: {
+					x: 0,
+					y: A3(
+						_elm_lang$core$Basics$clamp,
+						_elm_lang$core$Basics$negate(maxVelocity),
+						maxVelocity,
+						upVelocity + downVelocity)
+				}
+			});
+	});
+var _user$project$Update$applyPlayerForces = F2(
+	function (dt, players) {
+		return A2(
+			_elm_lang$core$List$map,
+			function (e) {
+				return A2(_user$project$Update$applyPlayerMovementForce, dt, e);
+			},
+			players);
+	});
+var _user$project$Update$applyForces = F3(
+	function (settings, dt, spheres) {
+		return A2(
+			_elm_lang$core$List$map,
+			function (e) {
+				return A4(_user$project$Update$applyGravitationForAll, settings, dt, e, spheres);
+			},
+			spheres);
+	});
+var _user$project$Update$incrementWeaponLastFired = F2(
+	function (dt, players) {
+		return A2(
+			_elm_lang$core$List$map,
+			function (e) {
+				return _elm_lang$core$Native_Utils.update(
+					e,
+					{weaponLastFired: e.weaponLastFired + dt});
+			},
+			players);
+	});
+var _user$project$Update$incrementLifetime = function (spheres) {
+	return A2(
+		_elm_lang$core$List$map,
+		function (e) {
+			return _elm_lang$core$Native_Utils.update(
+				e,
+				{aliveFrames: e.aliveFrames + 1});
+		},
+		spheres);
+};
+var _user$project$Update$scored = F2(
+	function (side, sphere) {
+		var _p7 = side;
+		if (_p7.ctor === 'Left') {
+			return _elm_lang$core$Native_Utils.eq(sphere.hitType, _user$project$Types$LeftPlayer);
+		} else {
+			return _elm_lang$core$Native_Utils.eq(sphere.hitType, _user$project$Types$RightPlayer);
+		}
+	});
+var _user$project$Update$toPercentage = F2(
+	function (numerator, denominator) {
+		return (numerator / denominator) * 100;
+	});
+var _user$project$Update$playerScoreAsPercentage = F3(
+	function (settings, player, spheres) {
+		return function (e) {
+			return A2(_user$project$Update$toPercentage, e, settings.scoreForGame);
+		}(
+			_elm_lang$core$List$sum(
+				A2(
+					_elm_lang$core$List$map,
+					function (e) {
+						return e.mass.size;
+					},
+					A2(
+						_elm_lang$core$List$filter,
+						function (e) {
+							return A2(_user$project$Update$scored, player.side, e);
+						},
+						spheres))));
+	});
+var _user$project$Update$updatePlayerScore = F3(
+	function (settings, player, spheres) {
+		return _elm_lang$core$Native_Utils.update(
+			player,
+			{
+				score: A3(
+					_elm_lang$core$Basics$clamp,
+					0,
+					100,
+					player.score + A3(_user$project$Update$playerScoreAsPercentage, settings, player, spheres))
+			});
+	});
+var _user$project$Update$updatePlayerScores = function (world) {
+	return _elm_lang$core$Native_Utils.update(
+		world,
+		{
+			players: A2(
+				_elm_lang$core$List$map,
+				function (e) {
+					return A3(_user$project$Update$updatePlayerScore, world.gameSettings, e, world.spheres);
+				},
+				world.players)
+		});
+};
+var _user$project$Update$limitSpheres = function (world) {
+	return _elm_lang$core$Native_Utils.update(
+		world,
+		{
+			spheres: A2(
+				_elm_lang$core$List$take,
+				_elm_lang$core$Basics$round(world.gameSettings.sphereLimit),
+				A2(
+					_elm_lang$core$List$sortBy,
+					function (_) {
+						return _.aliveFrames;
+					},
+					world.spheres))
+		});
+};
+var _user$project$Update$applyPhysics = F2(
+	function (dt, world) {
+		return _elm_lang$core$Native_Utils.update(
+			world,
+			{
+				spheres: _user$project$Update$incrementLifetime(
+					A2(
+						_user$project$Update$applyPaddleCollisions,
+						world,
+						A2(
+							_user$project$Update$applySphereCollisions,
+							world,
+							_user$project$Update$updateSpherePositions(
+								A2(
+									_user$project$Update$applyBoundaryCollisions,
+									world,
+									A3(_user$project$Update$applyForces, world.physicsSettings, dt, world.spheres)))))),
+				players: A2(
+					_user$project$Update$incrementWeaponLastFired,
+					dt,
+					A2(
+						_user$project$Update$updatePlayerPositions,
+						world,
+						A2(_user$project$Update$applyPlayerForces, dt, world.players)))
+			});
+	});
+var _user$project$Update$applyScoring = function (world) {
+	return _user$project$Update$removeScoredSpheres(
+		_user$project$Update$updatePlayerScores(
+			_elm_lang$core$Native_Utils.update(
+				world,
+				{
+					spheres: A2(_user$project$Update$markScoredSpheres, world.spheres, world)
+				})));
+};
+var _user$project$Update$caclulateShotPosition = F2(
+	function (player, radius) {
+		return {
+			x: function () {
+				var _p8 = player.side;
+				if (_p8.ctor === 'Left') {
+					return player.position.x + radius;
+				} else {
+					return player.position.x - radius;
+				}
+			}(),
+			y: player.position.y + (player.size / 2)
+		};
+	});
+var _user$project$Update$createSphere = F3(
+	function (player, initialMass, velocity) {
+		var scale = 5;
+		return {
+			id: 'A',
+			position: A2(
+				_user$project$Update$caclulateShotPosition,
+				player,
+				A2(_user$project$Update$calculateDiameter, scale, initialMass.size) / 2),
+			mass: initialMass,
+			diameter: A2(_user$project$Update$calculateDiameter, scale, initialMass.size),
+			velocity: velocity,
+			aliveFrames: 0,
+			scale: scale,
+			merged: false,
+			hitType: _user$project$Types$None
+		};
+	});
+var _user$project$Update$caclulateShotMass = F2(
+	function (settings, player) {
+		return {
+			size: A3(_elm_lang$core$Basics$clamp, 0, settings.maxShotSize, player.weaponLastFired * settings.shotTimeFactor)
+		};
+	});
+var _user$project$Update$caclulateShotVelocity = function (player) {
+	var velocityMultiplierX = 0.4;
+	var velocityMultiplierY = 0.5;
+	return {
+		x: function () {
+			var _p9 = player.side;
+			if (_p9.ctor === 'Left') {
+				return player.mass.size * velocityMultiplierX;
+			} else {
+				return _elm_lang$core$Basics$negate(player.mass.size * velocityMultiplierX);
+			}
+		}(),
+		y: player.velocity.y * velocityMultiplierY
+	};
+};
+var _user$project$Update$shootBall = F2(
+	function (player, world) {
+		return (_elm_lang$core$Native_Utils.cmp(
+			A2(_user$project$Update$caclulateShotMass, world.gameSettings, player).size,
+			world.gameSettings.minShotSize) < 0) ? world : _elm_lang$core$Native_Utils.update(
+			world,
+			{
+				spheres: A2(
+					_elm_lang$core$List$append,
+					world.spheres,
+					_elm_lang$core$Native_List.fromArray(
+						[
+							A3(
+							_user$project$Update$createSphere,
+							player,
+							A2(_user$project$Update$caclulateShotMass, world.gameSettings, player),
+							_user$project$Update$caclulateShotVelocity(player))
+						])),
+				players: A2(
+					_elm_lang$core$List$map,
+					function (e) {
+						return _elm_lang$core$Native_Utils.eq(e.side, player.side) ? _elm_lang$core$Native_Utils.update(
+							player,
+							{weaponLastFired: 0}) : e;
+					},
+					world.players)
+			});
+	});
+var _user$project$Update$attemptShot = F2(
+	function (world, side) {
+		var _p10 = _elm_lang$core$List$head(
+			A2(
+				_elm_lang$core$List$filter,
+				function (p) {
+					return _elm_lang$core$Native_Utils.eq(p.side, side);
+				},
+				world.players));
+		if (_p10.ctor === 'Nothing') {
+			return world;
+		} else {
+			return A2(_user$project$Update$shootBall, _p10._0, world);
+		}
+	});
+var _user$project$Update$updatePlayerAction = F3(
+	function (player, keyboardAction, direction) {
+		var _p11 = direction;
+		if (_p11.ctor === 'Up') {
+			return _elm_lang$core$Native_Utils.update(
+				player,
+				{upAction: keyboardAction});
+		} else {
+			return _elm_lang$core$Native_Utils.update(
+				player,
+				{downAction: keyboardAction});
+		}
+	});
+var _user$project$Update$updatePlayerActions = F4(
+	function (world, side, keyboardAction, direction) {
+		return _elm_lang$core$Native_Utils.update(
+			world,
+			{
+				players: A2(
+					_elm_lang$core$List$map,
+					function (p) {
+						return _elm_lang$core$Native_Utils.eq(p.side, side) ? A3(_user$project$Update$updatePlayerAction, p, keyboardAction, direction) : p;
+					},
+					world.players)
+			});
+	});
+var _user$project$Update$applyPlayerKeyChange = F3(
+	function (keyCode, action, world) {
+		var _p12 = keyCode;
+		switch (_p12) {
+			case 38:
+				return A4(_user$project$Update$updatePlayerActions, world, _user$project$Types$Right, action, _user$project$Types$Up);
+			case 40:
+				return A4(_user$project$Update$updatePlayerActions, world, _user$project$Types$Right, action, _user$project$Types$Down);
+			case 87:
+				return A4(_user$project$Update$updatePlayerActions, world, _user$project$Types$Left, action, _user$project$Types$Up);
+			case 83:
+				return A4(_user$project$Update$updatePlayerActions, world, _user$project$Types$Left, action, _user$project$Types$Down);
+			case 68:
+				var _p13 = action;
+				if (_p13.ctor === 'Pressed') {
+					return A2(_user$project$Update$attemptShot, world, _user$project$Types$Left);
+				} else {
+					return world;
+				}
+			case 37:
+				var _p14 = action;
+				if (_p14.ctor === 'Pressed') {
+					return A2(_user$project$Update$attemptShot, world, _user$project$Types$Right);
+				} else {
+					return world;
+				}
+			default:
+				return world;
+		}
+	});
+var _user$project$Update$update = F2(
+	function (msg, world) {
+		var _p15 = msg;
+		switch (_p15.ctor) {
+			case 'Tick':
+				var _p16 = world.state;
+				if (_p16.ctor === 'Play') {
+					return {
+						ctor: '_Tuple2',
+						_0: _user$project$Update$applyScoring(
+							A2(_user$project$Update$applyPhysics, _p15._0, world)),
+						_1: _elm_lang$core$Platform_Cmd$none
+					};
+				} else {
+					return {ctor: '_Tuple2', _0: world, _1: _elm_lang$core$Platform_Cmd$none};
+				}
+			case 'Click':
+				var _p17 = world.state;
+				if (_p17.ctor === 'Play') {
+					return {
+						ctor: '_Tuple2',
+						_0: _elm_lang$core$Native_Utils.update(
+							world,
+							{state: _user$project$Types$Pause}),
+						_1: _elm_lang$core$Platform_Cmd$none
+					};
+				} else {
+					return {
+						ctor: '_Tuple2',
+						_0: _elm_lang$core$Native_Utils.update(
+							world,
+							{state: _user$project$Types$Play}),
+						_1: _elm_lang$core$Platform_Cmd$none
+					};
+				}
+			case 'WindowSize':
+				return {ctor: '_Tuple2', _0: world, _1: _elm_lang$core$Platform_Cmd$none};
+			case 'KeyDown':
+				return {
+					ctor: '_Tuple2',
+					_0: A3(_user$project$Update$applyPlayerKeyChange, _p15._0, _user$project$Types$Pressed, world),
+					_1: _elm_lang$core$Platform_Cmd$none
+				};
+			default:
+				return {
+					ctor: '_Tuple2',
+					_0: A3(_user$project$Update$applyPlayerKeyChange, _p15._0, _user$project$Types$NotPressed, world),
+					_1: _elm_lang$core$Platform_Cmd$none
+				};
+		}
+	});
+var _user$project$Main$main = {
+	main: _elm_lang$html$Html_App$program(
+		{init: _user$project$States$defaultWorld, subscriptions: _user$project$States$subscriptions, update: _user$project$Update$update, view: _user$project$View$view})
+};
 var Elm = {};
-Elm['View'] = Elm['View'] || {};
-_elm_lang$core$Native_Platform.addPublicModule(Elm['View'], 'View', typeof _user$project$View$main === 'undefined' ? null : _user$project$View$main);
+Elm['Main'] = Elm['Main'] || {};
+_elm_lang$core$Native_Platform.addPublicModule(Elm['Main'], 'Main', typeof _user$project$Main$main === 'undefined' ? null : _user$project$Main$main);
 
 if (typeof define === "function" && define['amd'])
 {
@@ -8067,4 +9673,4 @@ for (var publicModule in Elm)
 }
 
 }).call(this);
-
+</script></head><body><script type="text/javascript">Elm.Main.fullscreen()</script></body></html>
