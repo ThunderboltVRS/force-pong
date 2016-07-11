@@ -14,7 +14,7 @@ import Material.Color
 view : World -> Html Msg
 view model =
     div []
-        [ div []
+        ([ div []
             [ Svg.svg
                 [ Svg.Attributes.width (toString graphicWidth)
                 , Svg.Attributes.height (toString graphicHeight)
@@ -22,20 +22,28 @@ view model =
                 ]
                 ((List.append [ sphereGradientColour Left, sphereGradientColour Right, graphicContainer model ] (renderWorldObjects model)))
             ]
-        , div []
-            [ Button.render MDL
-                [ 0 ]
-                model.mdl
-                [ css "margin" "0 24px"
-                    , Button.raised
-                    , Button.ripple
-                    , Button.colored
-                    , Button.onClick TogglePause
-                ]
-                [ Html.text "Pause" ]
-            ]
-        ]
+         ]
+            |> List.append (renderForm model)
+        )
         |> Material.Scheme.topWithScheme Material.Color.Blue Material.Color.LightBlue
+
+
+renderForm : World -> List (Html.Html Msg)
+renderForm model =
+    [ div []
+        [ Button.render MDL
+            [ 0 ]
+            model.mdl
+            [ css "margin" "0 24px"
+            , Button.raised
+            , Button.ripple
+            , Button.colored
+            , Button.onClick TogglePause
+            ]
+            [ Html.text "Pause" ]
+        ]
+    ]
+
 
 graphicContainer : World -> Svg.Svg msg
 graphicContainer world =

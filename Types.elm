@@ -193,3 +193,8 @@ type alias SideLine =
 
 type alias Mdl = 
   Material.Model 
+
+type alias TextFieldSettings =
+    { label : String
+    , text : String 
+    }
