@@ -12,6 +12,15 @@ type Msg
     | KeyUp Int
     | MDL Material.Msg
     | TogglePause
+    | PlayerOneName String
+    | PlayerTwoName String
+    | GravitationStrength String
+    | FlipGravity Bool
+    
+
+type AttactionType
+    = Attract
+    | Repel
 
 
 type WeaponType
@@ -180,6 +189,7 @@ type alias PhysicsSettings =
     , boundaryDampner : Float
     , maxSphereVelocity : Float
     , maxSphereSize : Float
+    , gravityAttractionType : AttactionType
     }
 
 

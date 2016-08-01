@@ -2,6 +2,7 @@ module Update exposing (..)
 
 import Types exposing (..)
 import Keyboard exposing (..)
+import String exposing (..)
 import Material
 
 
@@ -35,6 +36,23 @@ update msg world =
 
                 Pause ->
                     ( { world | state = Play }, Cmd.none )
+
+        PlayerOneName name ->
+            ( world, Cmd.none )
+
+        PlayerTwoName name ->
+            ( world, Cmd.none )
+
+        GravitationStrength text ->
+            case String.toFloat text of
+                Ok val ->
+                    ( { world | physicsSettings = updateGravityStrength world.physicsSettings val }, Cmd.none )
+
+                Err msg ->
+                    ( world, Cmd.none )
+
+        FlipGravity attracts ->
+            ( flipWorldGravity world, Cmd.none )
 
         MDL action' ->
             Material.update MDL action' world
@@ -555,13 +573,21 @@ calculateGravitation settings dt sphereA sphereB =
 
         force =
             calculateGravitationScalar settings.gravitationalConstant sphereA.mass sphereB.mass distance
+
+        repel =
+            settings.gravityAttractionType == Repel
     in
         if (distance < sphereA.diameter && distance < sphereB.diameter) then
             emptyForce
         else
-            { x = dt * force.size * ((sphereA.position.x - sphereB.position.x) / distance)
-            , y = dt * force.size * ((sphereA.position.y - sphereB.position.y) / distance)
+            { x = dt * force.size * (flipSign repel (apportianForce sphereA.position.x sphereB.position.x distance))
+            , y = dt * force.size * (flipSign repel (apportianForce sphereA.position.y sphereB.position.y distance))
             }
+
+
+apportianForce : Float -> Float -> Float -> Float
+apportianForce positionA positionB distance =
+    (positionA - positionB) / distance
 
 
 emptyForce : Force
@@ -678,3 +704,34 @@ collidedSpheres sphere otherSpheres =
 removeMergedSpheres : List (Sphere) -> List (Sphere)
 removeMergedSpheres spheres =
     List.filter (\e -> e.merged == False) spheres
+
+
+flipWorldGravity : World -> World
+flipWorldGravity world =
+    { world | physicsSettings = flipGravity world.physicsSettings }
+
+
+flipGravity : PhysicsSettings -> PhysicsSettings
+flipGravity physicsSettings =
+    { physicsSettings | gravityAttractionType = flipAttactionType physicsSettings.gravityAttractionType }
+
+
+flipAttactionType : AttactionType -> AttactionType
+flipAttactionType attactionType =
+    if attactionType == Attract then
+        Repel
+    else
+        Attract
+
+
+flipSign : Bool -> Float -> Float
+flipSign flip number =
+    if flip then
+        negate number
+    else
+        number
+
+
+updateGravityStrength : PhysicsSettings -> Float -> PhysicsSettings
+updateGravityStrength physicsSettings number =
+    physicsSettings

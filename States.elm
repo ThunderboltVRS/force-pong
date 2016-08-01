@@ -66,6 +66,7 @@ defaultWorld =
             , boundaryDampner = 0.95
             , maxSphereVelocity = 10
             , maxSphereSize = 200
+            , gravityAttractionType = Attract
             }
       , gameSettings =
             { scoreForGame = 500

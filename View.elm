@@ -6,43 +6,37 @@ import Html exposing (..)
 import Types exposing (..)
 import Config exposing (..)
 import Material.Scheme
-import Material.Button as Button
-import Material.Options exposing (css)
+import Material.Grid
 import Material.Color
+import Material.Elevation
+import Material.Options exposing (Style, css)
+import Material.Grid exposing (..)
+import FormComponents exposing (..)
 
 
 view : World -> Html Msg
 view model =
-    div []
-        ([ div []
-            [ Svg.svg
-                [ Svg.Attributes.width (toString graphicWidth)
-                , Svg.Attributes.height (toString graphicHeight)
-                , Svg.Attributes.style "background-color: none"
-                ]
-                ((List.append [ sphereGradientColour Left, sphereGradientColour Right, graphicContainer model ] (renderWorldObjects model)))
-            ]
-         ]
-            |> List.append (renderForm model)
-        )
+    layoutGrid model
         |> Material.Scheme.topWithScheme Material.Color.Blue Material.Color.LightBlue
 
 
-renderForm : World -> List (Html.Html Msg)
-renderForm model =
-    [ div []
-        [ Button.render MDL
-            [ 0 ]
-            model.mdl
-            [ css "margin" "0 24px"
-            , Button.raised
-            , Button.ripple
-            , Button.colored
-            , Button.onClick TogglePause
-            ]
-            [ Html.text "Pause" ]
+layoutGrid : World -> Html Types.Msg
+layoutGrid model =
+    Material.Grid.grid
+        []
+        [ std [ size All 8, size Tablet 8, Material.Elevation.e16 ] [ mainDrawingArea model ]
+        , std [ size All 3, size Tablet 3, Material.Elevation.e16 ] [ FormComponents.optionsForm model ]
         ]
-    ]
+
+
+mainDrawingArea : World -> Svg.Svg msg
+mainDrawingArea model =
+    Svg.svg
+        [ Svg.Attributes.width (toString graphicWidth)
+        , Svg.Attributes.height (toString graphicHeight)
+        , Svg.Attributes.style "background-color: none"
+        ]
+        (List.append [ graphicContainer model, sphereGradientColour Left, sphereGradientColour Right ] (renderWorldObjects model))
 
 
 graphicContainer : World -> Svg.Svg msg
@@ -55,7 +49,7 @@ graphicContainer world =
         , fill "none"
         , stroke "blue"
         , strokeWidth ((toString containerBorder) ++ "px")
-        , strokeOpacity "0.2"
+        , strokeOpacity "0.4"
         ]
         []
 
@@ -80,9 +74,9 @@ renderCircle sphere =
         [ cx (toString sphere.position.x)
         , cy (toString sphere.position.y)
         , r (toString (sphere.diameter / 2))
-        , fill (sphereGradientName sphere.side)
+        , fill ("url(#" ++ (sphereGradientName sphere.side) ++ ")")
         ]
-        [ sphereGradientColour sphere.side ]
+        []
 
 
 renderScores : World -> List (Svg.Svg msg)
@@ -223,32 +217,32 @@ sphereGradientName side =
 
 innerSphereGradientColour : Side -> Svg.Svg msg
 innerSphereGradientColour side =
-    Svg.stop [ offset "0%", stopOpacity "0.3", innerSphereColour side ] []
+    Svg.stop [ Svg.Attributes.offset "0%", stopOpacity "0.3", innerSphereColour side ] []
 
 
 innerSphereColour : Side -> Svg.Attribute msg
 innerSphereColour side =
     case side of
         Left ->
-            stopColor "0B79CE"
+            stopColor "#0B79CE"
 
         Right ->
-            stopColor "0B79CE"
+            stopColor "red"
 
 
 outerSphereGradientColour : Side -> Svg.Svg msg
 outerSphereGradientColour side =
-    Svg.stop [ offset "100%", stopOpacity "1", outerSphereColour side ] []
+    Svg.stop [ Svg.Attributes.offset "100%", stopOpacity "1", outerSphereColour side ] []
 
 
 outerSphereColour : Side -> Svg.Attribute msg
 outerSphereColour side =
     case side of
         Left ->
-            stopColor "0B79CE"
+            stopColor "#0B79CE"
 
         Right ->
-            stopColor "0B79CE"
+            stopColor "red"
 
 
 playerColor : Side -> String
@@ -259,3 +253,37 @@ playerColor side =
 
         Right ->
             "red"
+
+
+
+-- Cell styling
+
+
+style : Int -> List (Style a)
+style h =
+    [ css "text-sizing" "border-box"
+    , css "background-color" "none"
+    , css "height" (toString h ++ "px")
+    , css "padding-left" "0px"
+    , css "padding-top" "0px"
+    --, css "color" "white"
+    ]
+
+
+
+-- Cell variants
+
+
+materialCell : Int -> List (Style a) -> List (Html a) -> Material.Grid.Cell a
+materialCell k styling =
+    Material.Grid.cell <| List.concat [ style k, styling ]
+
+
+small : List (Style a) -> List (Html a) -> Material.Grid.Cell a
+small =
+    materialCell 50
+
+
+std : List (Style a) -> List (Html a) -> Material.Grid.Cell a
+std =
+    materialCell (Config.graphicHeight)

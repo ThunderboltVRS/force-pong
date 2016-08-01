@@ -15,7 +15,7 @@ playerHeightPercent =
 
 containerOffset : number
 containerOffset =
-    20
+    0
 
 
 containerBorder : number
@@ -30,7 +30,7 @@ sideOffset =
 
 graphicWidth : number
 graphicWidth =
-    1000
+    1040
 
 
 graphicHeight : number
