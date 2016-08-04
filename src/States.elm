@@ -17,7 +17,7 @@ defaultWorld =
               , position = { x = (playerSideLinePosistion Left playerWidth), y = graphicHeight / 2 }
               , side = Left
               , score = 0
-              , size = 60
+              , size = 80
               , velocity = { x = 0, y = 0 }
               , upAction = NotPressed
               , downAction = NotPressed
@@ -26,12 +26,14 @@ defaultWorld =
               , ammo = 10
               , weapons = [ { weaponType = Normal, force = { x = 1, y = 0 } } ]
               , weaponLastFired = 0
+              , gamesWon = 0
+              , name = "Player One"
               }
             , { number = Two
               , position = { x = (playerSideLinePosistion Right playerWidth), y = graphicHeight / 2 }
               , side = Right
               , score = 0
-              , size = 60
+              , size = 80
               , velocity = { x = 0, y = 0 }
               , upAction = NotPressed
               , downAction = NotPressed
@@ -40,6 +42,8 @@ defaultWorld =
               , ammo = 10
               , weapons = [ { weaponType = Normal, force = { x = 1, y = 0 } } ]
               , weaponLastFired = 0
+              , gamesWon = 0
+              , name = "Player Two"
               }
             ]
       , state = Play
@@ -75,6 +79,7 @@ defaultWorld =
             , minShotSize = 20
             , shotTimeFactor = 0.01
             , sphereLimit = 40
+            , gamesToWin = 5
             }
       , winStates =
             { gameWinState = NoWin
@@ -92,7 +97,7 @@ defaultWorld =
             , y1 = outerContainerY1
             , y2 = outerContainerY2
             }
-      , mdl = Material.model 
+      , mdl = Material.model
       }
     , Cmd.none
     )

@@ -24,7 +24,7 @@ layoutGrid : World -> Html Types.Msg
 layoutGrid model =
     Material.Grid.grid
         []
-        [ std [ size All 8, size Tablet 8, Material.Elevation.e16 ] [ mainDrawingArea model ]
+        [ std [ size All 8, size Tablet 8, Material.Elevation.e16, Material.Options.css "min-width" (toString graphicWidth ++ "px") ] [ mainDrawingArea model ]
         , std [ size All 3, size Tablet 3, Material.Elevation.e16 ] [ FormComponents.optionsForm model ]
         ]
 
@@ -82,6 +82,7 @@ renderCircle sphere =
 renderScores : World -> List (Svg.Svg msg)
 renderScores world =
     List.map (\e -> renderScore world e) world.players
+        |> (\s -> List.append s (List.map (\e -> renderGameScore world e) world.players))
 
 
 renderScore : World -> Player -> Svg.Svg msg
@@ -97,9 +98,27 @@ renderScore world player =
         []
 
 
+renderGameScore : World -> Player -> Svg.Svg msg
+renderGameScore world player =
+    rect
+        [ x (outerBorderX player.side world |> toString)
+        , y (outerBorderY player.side (scoreHeight world.innerContainer player) world |> toString)
+        , width (scoreWidth world |> (/) 4 |> toString)
+        , height (scoreGameHeight world.gameSettings world.innerContainer player.gamesWon |> toString)
+        , fill (playerColor player.side)
+        , fillOpacity "0.4"
+        ]
+        []
+
+
 scoreHeight : Boundary -> Player -> Float
 scoreHeight innerContainer player =
     (player.score / 100) * (innerContainer.y2 - innerContainer.y1)
+
+
+scoreGameHeight : GameSettings -> Boundary -> Int -> Float
+scoreGameHeight settings innerContainer gamesWon =
+    (toFloat gamesWon / toFloat settings.gamesToWin) * (innerContainer.y2 - innerContainer.y1)
 
 
 outerBorderX : Side -> World -> Float
@@ -179,22 +198,27 @@ renderPlayer player sideLine world =
 
 renderStateMessage : World -> List (Svg.Svg msg) -> List (Svg.Svg msg)
 renderStateMessage world svgs =
-    if world.state == Pause then
-        List.append [ renderMessage "Paused" world ] svgs
-    else
-        svgs
+    case world.state of
+        Pause ->
+            List.append [ renderMessage (world.outerContainer.x2 / 2) (world.outerContainer.y2 / 2) "Paused" world ] svgs
+
+        Win ->
+            List.append [ renderMessage (world.outerContainer.x2 / 2) (world.outerContainer.y2 / 2) "Won" world ] svgs
+
+        Play ->
+            svgs
 
 
-renderMessage : String -> World -> Svg.Svg msg
-renderMessage message world =
+renderMessage : Float -> Float -> String -> World -> Svg.Svg msg
+renderMessage xpos ypos message world =
     Svg.text'
-        [ x ((toString (world.outerContainer.x2 / 2)) ++ "px")
-        , y ((toString (world.outerContainer.y2 / 2)) ++ "px")
-        , fill "blue"
+        [ x ((toString xpos) ++ "px")
+        , y ((toString ypos) ++ "px")
+        , fill "grey"
         , Svg.Attributes.opacity "0.6"
+          -- , Svg.Attributes.fontSize "20" -- improve font
         ]
-        [ Svg.text message
-        ]
+        [ Svg.text message ]
 
 
 sphereGradientColour : Side -> Svg.Svg msg
@@ -262,11 +286,10 @@ playerColor side =
 style : Int -> List (Style a)
 style h =
     [ css "text-sizing" "border-box"
-    , css "background-color" "none"
     , css "height" (toString h ++ "px")
     , css "padding-left" "0px"
     , css "padding-top" "0px"
-    --, css "color" "white"
+      --, css "color" "white"
     ]
 
 

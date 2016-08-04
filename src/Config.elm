@@ -5,11 +5,6 @@ import Types exposing (..)
 
 playerWidth : number
 playerWidth =
-    5
-
-
-playerHeightPercent : number
-playerHeightPercent =
     10
 
 

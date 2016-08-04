@@ -16,7 +16,7 @@ type Msg
     | PlayerTwoName String
     | GravitationStrength String
     | FlipGravity Bool
-    
+
 
 type AttactionType
     = Attract
@@ -25,9 +25,7 @@ type AttactionType
 
 type WeaponType
     = Normal
-    | Shotgun
-    | Field
-    | Bouncer
+    | Reducer
 
 
 type Side
@@ -60,6 +58,7 @@ type PlayerDirection
 type State
     = Play
     | Pause
+    | Win
 
 
 type PlayerNumber
@@ -159,6 +158,8 @@ type alias Player =
     , ammo : Float
     , weapons : List (Weapon)
     , weaponLastFired : Float
+    , gamesWon : Int
+    , name : String
     }
 
 
@@ -175,6 +176,7 @@ type alias GameSettings =
     , minShotSize : Float
     , shotTimeFactor : Float
     , sphereLimit : Float
+    , gamesToWin : Int
     }
 
 
@@ -201,10 +203,12 @@ type alias SideLine =
     , y2 : Float
     }
 
-type alias Mdl = 
-  Material.Model 
+
+type alias Mdl =
+    Material.Model
+
 
 type alias TextFieldSettings =
     { label : String
-    , text : String 
+    , text : String
     }

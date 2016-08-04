@@ -20,6 +20,9 @@ update msg world =
                 Pause ->
                     ( world, Cmd.none )
 
+                Win ->
+                    ( world, Cmd.none )
+
         WindowSize reSize ->
             ( world, Cmd.none )
 
@@ -37,11 +40,14 @@ update msg world =
                 Pause ->
                     ( { world | state = Play }, Cmd.none )
 
+                Win ->
+                    ( { world | state = Play }, Cmd.none )
+
         PlayerOneName name ->
-            ( world, Cmd.none )
+            ( updatePlayerName name Left world, Cmd.none )
 
         PlayerTwoName name ->
-            ( world, Cmd.none )
+            ( updatePlayerName name Right world, Cmd.none )
 
         GravitationStrength text ->
             case String.toFloat text of
@@ -124,6 +130,21 @@ updatePlayerAction player keyboardAction direction =
             { player | downAction = keyboardAction }
 
 
+updatePlayerName : String -> Side -> World -> World
+updatePlayerName newName side world =
+    { world
+        | players =
+            List.map
+                (\e ->
+                    if e.side == side then
+                        { e | name = newName }
+                    else
+                        e
+                )
+                world.players
+    }
+
+
 attemptShot : World -> Side -> World
 attemptShot world side =
     case
@@ -159,10 +180,10 @@ caclulateShotVelocity : Player -> Velocity
 caclulateShotVelocity player =
     let
         velocityMultiplierY =
-            0.5
+            0.7
 
         velocityMultiplierX =
-            0.4
+            0.7
     in
         { x =
             case player.side of
@@ -217,6 +238,7 @@ applyScoring world =
     { world | spheres = markScoredSpheres world.spheres world }
         |> updatePlayerScores
         |> removeScoredSpheres
+        |> updateWinningPlayers
 
 
 applyPhysics : Float -> World -> World
@@ -250,9 +272,34 @@ updatePlayerScores world =
     { world | players = List.map (\e -> updatePlayerScore world.gameSettings e world.spheres) world.players }
 
 
+updateWinningPlayers : World -> World
+updateWinningPlayers world =
+    { world | players = List.map (\e -> updateWinningPlayer e) world.players }
+
+
 updatePlayerScore : GameSettings -> Player -> List (Sphere) -> Player
 updatePlayerScore settings player spheres =
     { player | score = clamp 0 100 (player.score + playerScoreAsPercentage settings player spheres) }
+
+
+updateWinningPlayer : Player -> Player
+updateWinningPlayer player =
+    if player.score == 100 then
+        { player | gamesWon = player.gamesWon + 1 }
+    else
+        player
+
+
+updateForWin : World -> World
+updateForWin world =
+    if (anyWinningPlayers world.players) then
+        { world | state = Win }
+    else
+        world
+
+
+
+-- if any player won then set world State to Win
 
 
 playerScoreAsPercentage : GameSettings -> Player -> List (Sphere) -> Float
@@ -302,13 +349,13 @@ applyPlayerMovementForce : Float -> Player -> Player
 applyPlayerMovementForce dt player =
     let
         acceleration =
-            0.2
+            0.6
 
         dragPercentage =
             0.3
 
         maxVelocity =
-            10
+            15
 
         upVelocity =
             case player.upAction of
@@ -400,6 +447,16 @@ findPlayer side players =
     List.head (List.filter (\e -> e.side == side) players)
 
 
+anyWinningPlayers : List (Player) -> Bool
+anyWinningPlayers players =
+    List.any (\e -> winningPlayer e) players
+
+
+winningPlayer : Player -> Bool
+winningPlayer player =
+    player.score == 100
+
+
 collidedWithPaddle : World -> Sphere -> Maybe Player -> Bool
 collidedWithPaddle world sphere player =
     let
@@ -488,12 +545,28 @@ mergeSphere : World -> Sphere -> Sphere -> Sphere
 mergeSphere world sphereA sphereB =
     let
         sphereAPost =
-            { sphereA | mass = limitSphereMass world (sumMass sphereA.mass sphereB.mass), position = mergePosition sphereA.position sphereB.position }
+            { sphereA
+                | mass = limitSphereMass world (sumMass sphereA.mass sphereB.mass)
+                , position = mergePosition sphereA.position sphereB.position
+                , side = largestMassSide sphereA.side sphereB.side sphereA.mass sphereB.mass
+            }
 
         sphereBPost =
             { sphereB | mass = { size = 0 }, position = { x = 0, y = 0 }, velocity = { x = 0, y = 0 } }
     in
         updateDiameter sphereA.scale (updateVelocity sphereA sphereB sphereAPost sphereBPost)
+
+
+largestMassSide : Side -> Side -> Mass -> Mass -> Side
+largestMassSide sideA sideB massA massB =
+    if massA.size > massB.size then
+        sideA
+    else
+        sideB
+
+
+
+-- note bias if equal, should be random in that case
 
 
 limitSphereMass : World -> Mass -> Mass
@@ -680,20 +753,20 @@ markAsMerged sphere =
 
 
 mergeSpheres : World -> Sphere -> List (Sphere) -> Sphere
-mergeSpheres world testSphere otherSpheres =
+mergeSpheres world sphere otherSpheres =
     let
         spheresCollided =
-            collidedSpheres testSphere otherSpheres
+            collidedSpheres sphere otherSpheres
     in
         if List.isEmpty spheresCollided then
-            testSphere
+            sphere
         else if
-            (List.any (\f -> f.mass.size > testSphere.mass.size) spheresCollided)
-                || (List.any (\f -> f.mass.size == testSphere.mass.size && f.aliveFrames > testSphere.aliveFrames) spheresCollided)
+            (List.any (\f -> f.mass.size > sphere.mass.size) spheresCollided)
+                || (List.any (\f -> f.mass.size == sphere.mass.size && f.aliveFrames > sphere.aliveFrames) spheresCollided)
         then
-            markAsMerged testSphere
+            markAsMerged sphere
         else
-            List.foldl (mergeSphere world) testSphere spheresCollided
+            List.foldl (mergeSphere world) sphere spheresCollided
 
 
 collidedSpheres : Sphere -> List (Sphere) -> List (Sphere)
@@ -734,4 +807,4 @@ flipSign flip number =
 
 updateGravityStrength : PhysicsSettings -> Float -> PhysicsSettings
 updateGravityStrength physicsSettings number =
-    physicsSettings
+    { physicsSettings | gravitationalConstant = (clamp 0 60 number) }
