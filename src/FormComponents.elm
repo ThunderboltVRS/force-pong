@@ -50,30 +50,30 @@ optionsForm model =
           --     [ cell [ size All 8, size Tablet 4 ] [ saveButton model ]
           --     , cell [ size All 8, size Tablet 4 ] [ loadButton model ]
           --     ]
-          Material.Grid.grid
-            []
-            [ cell 50 [ size All 8, size Tablet 4 ] [ gravityStrength model ]
-            ]
-        , Material.Grid.grid
-            []
-            [ cell 50 [ size All 8, size Tablet 4 ] [ playerOneName model ]
-            ]
-        , Material.Grid.grid
-            []
-            [ cell 50 [ size All 8, size Tablet 4 ] [ playerTwoName model ]
-            ]
-        , Material.Grid.grid
+        -- , Material.Grid.grid
+        --     []
+        --     [ cell 50 [ size All 8, size Tablet 4 ] [ playerOneName model ]
+        --     ]
+        -- , Material.Grid.grid
+        --     []
+        --     [ cell 50 [ size All 8, size Tablet 4 ] [ playerTwoName model ]
+        --     ]
+        Material.Grid.grid
             []
             [ cell 50 [ size All 8, size Tablet 4 ] [ gravitySwitch model ]
             ]
         , Material.Grid.grid
             []
-            [ cell 50 [ size All 8, size Tablet 4 ] [ pauseButton model ]
+            [ cell 50 [ size All 8, size Tablet 4 ] [ gravityStrength model ]
             ]
         , Material.Grid.grid
             []
-            [ cell 50 [ size All 8, size Tablet 4 ] [ testDisplay model ]
+            [ cell 50 [ size All 8, size Tablet 4 ] [ pauseButton model ]
             ]
+        -- , Material.Grid.grid
+        --     []
+        --     [ cell 50 [ size All 8, size Tablet 4 ] [ testDisplay model ]
+        --     ]
         ]
 
 
