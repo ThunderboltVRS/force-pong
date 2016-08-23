@@ -1,4 +1,4 @@
-# Force gravity
+# Force Pong
 
 Small two player force pong app written entirely in elm.
 
