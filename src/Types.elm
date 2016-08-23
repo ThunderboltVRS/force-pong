@@ -10,12 +10,14 @@ type Msg
     | WindowSize Window.Size
     | KeyDown Int
     | KeyUp Int
-    | MDL Material.Msg
+    | Mdl (Material.Msg Msg)
     | TogglePause
     | PlayerOneName String
     | PlayerTwoName String
-    | GravitationStrength String
     | FlipGravity Bool
+    | Slider Int Float
+    | SaveState
+    | LoadState
 
 
 type AttactionType
@@ -192,6 +194,8 @@ type alias PhysicsSettings =
     , maxSphereVelocity : Float
     , maxSphereSize : Float
     , gravityAttractionType : AttactionType
+    , maxGravitationalConstant : Float
+    , minGravitationalConstant : Float
     }
 
 

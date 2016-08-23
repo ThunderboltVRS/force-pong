@@ -1,24 +1,23 @@
 module FormComponents exposing (..)
 
-import Material.Scheme
-import Material.Options exposing (css)
-import Material exposing (..)
 import Material.Textfield
 import Material.Button
 import Material.Grid
-import Material.Color
 import Material.Toggles
 import Material.Options exposing (Style, css, cs)
 import Material.Grid exposing (..)
+import Material.Typography as Typo
 import Html exposing (..)
 import Types exposing (..)
 import Material.Elevation as Elevation
+import Material.Slider as Slider
+import JsonUtil exposing (..)
 
 
 view : TextFieldSettings -> Mdl -> Html Types.Msg
 view settings material =
     div []
-        [ Material.Textfield.render MDL
+        [ Material.Textfield.render Mdl
             [ 0 ]
             material
             [ css "margin" "0 24px"
@@ -46,42 +45,41 @@ table contents =
 optionsForm : World -> Html Types.Msg
 optionsForm model =
     div []
-        [ Material.Grid.grid
+        [ -- Material.Grid.grid
+          --     []
+          --     [ cell [ size All 8, size Tablet 4 ] [ saveButton model ]
+          --     , cell [ size All 8, size Tablet 4 ] [ loadButton model ]
+          --     ]
+          Material.Grid.grid
             []
-            [ std [ size All 8, size Tablet 4 ] [ gravitationInput model ]
-            , std [ size All 4, size Tablet 2 ] [ pauseButton model ]
+            [ cell 50 [ size All 8, size Tablet 4 ] [ gravityStrength model ]
             ]
         , Material.Grid.grid
             []
-            [ std [ size All 2, size Tablet 2 ] [ gravitySwitch model ]
+            [ cell 50 [ size All 8, size Tablet 4 ] [ playerOneName model ]
             ]
         , Material.Grid.grid
             []
-            [ std [ size All 8, size Tablet 4 ] [ playerOneName model ]
+            [ cell 50 [ size All 8, size Tablet 4 ] [ playerTwoName model ]
             ]
         , Material.Grid.grid
             []
-            [ std [ size All 8, size Tablet 4 ] [ playerTwoName model ]
+            [ cell 50 [ size All 8, size Tablet 4 ] [ gravitySwitch model ]
             ]
-        ]
-
-
-gravitationInput : World -> Html Types.Msg
-gravitationInput model =
-    Material.Textfield.render MDL
-        [ 0 ]
-        model.mdl
-        [ Material.Textfield.label "Gravitational Constant"
-        , Material.Textfield.floatingLabel
-        , Material.Textfield.text'
-        , Material.Textfield.onInput GravitationStrength
-        , Material.Textfield.value (toString model.physicsSettings.gravitationalConstant)
+        , Material.Grid.grid
+            []
+            [ cell 50 [ size All 8, size Tablet 4 ] [ pauseButton model ]
+            ]
+        , Material.Grid.grid
+            []
+            [ cell 50 [ size All 8, size Tablet 4 ] [ testDisplay model ]
+            ]
         ]
 
 
 playerOneName : World -> Html Types.Msg
 playerOneName model =
-    Material.Textfield.render MDL
+    Material.Textfield.render Mdl
         [ 0 ]
         model.mdl
         [ Material.Textfield.label "Player One Name"
@@ -94,7 +92,7 @@ playerOneName model =
 
 playerTwoName : World -> Html Types.Msg
 playerTwoName model =
-    Material.Textfield.render MDL
+    Material.Textfield.render Mdl
         [ 0 ]
         model.mdl
         [ Material.Textfield.label "Player Two Name"
@@ -107,22 +105,35 @@ playerTwoName model =
 
 pauseButton : World -> Html Types.Msg
 pauseButton model =
-    Material.Button.render MDL
+    Material.Button.render Mdl
         [ 0 ]
         model.mdl
-        [ css "margin" "10px 10px"
-        , css "float" "right"
+        [ css "margin" "0px 0px"
+        , css "float" "left"
         , Material.Button.raised
         , Material.Button.ripple
         , Material.Button.colored
         , Material.Button.onClick TogglePause
         ]
-        [ Html.text "Pause" ]
+        [ Html.text (pauseButtonText model) ]
+
+
+pauseButtonText : World -> String
+pauseButtonText model =
+    case model.state of
+        Win ->
+            "Continue"
+
+        Pause ->
+            "Continue"
+
+        Play ->
+            "Pause"
 
 
 gravitySwitch : World -> Html Types.Msg
 gravitySwitch model =
-    Material.Toggles.switch MDL
+    Material.Toggles.switch Mdl
         [ 0 ]
         model.mdl
         [ Material.Toggles.onClick (FlipGravity True)
@@ -147,27 +158,35 @@ style h =
     ]
 
 
-
---Copied in View and here refactor
-
-
-materialCell : Int -> List (Style a) -> List (Html a) -> Material.Grid.Cell a
-materialCell k styling =
-    Material.Grid.cell <| List.concat [ style k, styling ]
-
-
-small : List (Style a) -> List (Html a) -> Material.Grid.Cell a
-small =
-    materialCell 50
+gravityStrength : World -> Html Types.Msg
+gravityStrength model =
+    Slider.view
+        [ Slider.onChange (Types.Slider 1)
+        , Slider.value (model.physicsSettings.gravitationalConstant)
+        , Slider.max model.physicsSettings.maxGravitationalConstant
+        , Slider.min model.physicsSettings.minGravitationalConstant
+        , Slider.step 1
+        ]
 
 
-std : List (Style a) -> List (Html a) -> Material.Grid.Cell a
-std =
-    materialCell (50)
+testDisplay : World -> Html a
+testDisplay model =
+    Material.Options.styled p
+        [ Typo.body2 ]
+        [ text (JsonUtil.worldEncoder model |> toString) ]
 
 
 
--- Helpers - these may be duplicated in Update.elm, look at how to consolidate
+--Copied from View, refactor
+
+
+cell : Int -> List (Style a) -> List (Html a) -> Material.Grid.Cell a
+cell height styling =
+    Material.Grid.cell <| List.concat [ style height, styling ]
+
+
+
+-- Helpers
 
 
 playerName : Side -> List (Player) -> String

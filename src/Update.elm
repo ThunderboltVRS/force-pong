@@ -2,7 +2,6 @@ module Update exposing (..)
 
 import Types exposing (..)
 import Keyboard exposing (..)
-import String exposing (..)
 import Material
 
 
@@ -49,19 +48,25 @@ update msg world =
         PlayerTwoName name ->
             ( updatePlayerName name Right world, Cmd.none )
 
-        GravitationStrength text ->
-            case String.toFloat text of
-                Ok val ->
-                    ( { world | physicsSettings = updateGravityStrength world.physicsSettings val }, Cmd.none )
-
-                Err msg ->
-                    ( world, Cmd.none )
-
         FlipGravity attracts ->
             ( flipWorldGravity world, Cmd.none )
 
-        MDL action' ->
-            Material.update MDL action' world
+        Slider a b ->
+            case a of
+                1 ->
+                    ( { world | physicsSettings = updateGravityStrength world.physicsSettings b }, Cmd.none )
+
+                _ ->
+                    ( world, Cmd.none )
+
+        SaveState ->
+            ( world, Cmd.none )
+
+        LoadState ->
+            ( world, Cmd.none )
+
+        Types.Mdl msg' ->
+            Material.update msg' world
 
 
 applyPlayerKeyChange : KeyCode -> KeyboardKeyAction -> World -> World
@@ -239,6 +244,7 @@ applyScoring world =
         |> updatePlayerScores
         |> removeScoredSpheres
         |> updateWinningPlayers
+        |> updateForWin
 
 
 applyPhysics : Float -> World -> World
@@ -290,16 +296,16 @@ updateWinningPlayer player =
         player
 
 
+
+-- if any player won then set world State to Win
+
+
 updateForWin : World -> World
 updateForWin world =
     if (anyWinningPlayers world.players) then
         { world | state = Win }
     else
         world
-
-
-
--- if any player won then set world State to Win
 
 
 playerScoreAsPercentage : GameSettings -> Player -> List (Sphere) -> Float
@@ -500,7 +506,7 @@ makePositive x =
 
 makeNegative : Float -> Float
 makeNegative x =
-    abs x |> negate
+    makePositive x |> negate
 
 
 updatePlayerPositions : World -> List (Player) -> List (Player)
@@ -559,14 +565,11 @@ mergeSphere world sphereA sphereB =
 
 largestMassSide : Side -> Side -> Mass -> Mass -> Side
 largestMassSide sideA sideB massA massB =
+    -- note bias if equal, should be random in that case
     if massA.size > massB.size then
         sideA
     else
         sideB
-
-
-
--- note bias if equal, should be random in that case
 
 
 limitSphereMass : World -> Mass -> Mass

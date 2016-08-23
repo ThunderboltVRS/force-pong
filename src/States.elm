@@ -10,7 +10,11 @@ import Material
 
 defaultWorld : ( World, Cmd Msg )
 defaultWorld =
-    ( { spheres =
+    ( initialWorld, Cmd.none )
+
+initialWorld : World
+initialWorld = 
+      { spheres =
             []
       , players =
             [ { number = One
@@ -71,6 +75,8 @@ defaultWorld =
             , maxSphereVelocity = 10
             , maxSphereSize = 200
             , gravityAttractionType = Attract
+            , maxGravitationalConstant = 60
+            , minGravitationalConstant = 0
             }
       , gameSettings =
             { scoreForGame = 500
@@ -99,8 +105,6 @@ defaultWorld =
             }
       , mdl = Material.model
       }
-    , Cmd.none
-    )
 
 
 subscriptions : World -> Sub Msg

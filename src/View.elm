@@ -24,8 +24,8 @@ layoutGrid : World -> Html Types.Msg
 layoutGrid model =
     Material.Grid.grid
         []
-        [ std [ size All 8, size Tablet 8, Material.Elevation.e16, Material.Options.css "min-width" (toString graphicWidth ++ "px") ] [ mainDrawingArea model ]
-        , std [ size All 3, size Tablet 3, Material.Elevation.e16 ] [ FormComponents.optionsForm model ]
+        [ FormComponents.cell Config.graphicHeight [ size All 8, size Tablet 8, Material.Elevation.e16, Material.Options.css "min-width" (toString graphicWidth ++ "px") ] [ mainDrawingArea model ]
+        , FormComponents.cell Config.graphicHeight [ size All 2, size Tablet 2, Material.Elevation.e16 ] [ FormComponents.optionsForm model ]
         ]
 
 
@@ -102,10 +102,11 @@ renderGameScore : World -> Player -> Svg.Svg msg
 renderGameScore world player =
     rect
         [ x (outerBorderX player.side world |> toString)
-        , y (outerBorderY player.side (scoreHeight world.innerContainer player) world |> toString)
-        , width (scoreWidth world |> (/) 4 |> toString)
+        , y ((outerBorderY player.side (scoreHeight world.innerContainer player) world) - (scoreGameHeight world.gameSettings world.innerContainer player.gamesWon) |> toString)
+        , width (((/) (scoreWidth world) 2) |> toString)
         , height (scoreGameHeight world.gameSettings world.innerContainer player.gamesWon |> toString)
-        , fill (playerColor player.side)
+        , fill "blue"
+        -- , fill (playerColor player.side)
         , fillOpacity "0.4"
         ]
         []
@@ -291,22 +292,3 @@ style h =
     , css "padding-top" "0px"
       --, css "color" "white"
     ]
-
-
-
--- Cell variants
-
-
-materialCell : Int -> List (Style a) -> List (Html a) -> Material.Grid.Cell a
-materialCell k styling =
-    Material.Grid.cell <| List.concat [ style k, styling ]
-
-
-small : List (Style a) -> List (Html a) -> Material.Grid.Cell a
-small =
-    materialCell 50
-
-
-std : List (Style a) -> List (Html a) -> Material.Grid.Cell a
-std =
-    materialCell (Config.graphicHeight)
