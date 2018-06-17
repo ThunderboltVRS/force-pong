@@ -22,10 +22,17 @@ view model =
 
 layoutGrid : World -> Html Types.Msg
 layoutGrid model =
-    Material.Grid.grid
-        []
-        [ FormComponents.cell Config.graphicHeight [ size All 8, size Tablet 8, Material.Elevation.e16, Material.Options.css "min-width" (toString graphicWidth ++ "px") ] [ mainDrawingArea model ]
-        , FormComponents.cell Config.graphicHeight [ size All 2, size Tablet 2, Material.Elevation.e16 ] [ FormComponents.optionsForm model ]
+    Html.div []
+        [ Material.Grid.grid
+            []
+            [ FormComponents.cell Config.graphicHeight [ size All 6, size Tablet 6, Material.Elevation.e16, Material.Options.css "min-width" (toString graphicWidth ++ "px") ] [ mainDrawingArea model ]
+            , FormComponents.cell Config.graphicHeight [ size All 2, size Tablet 2, Material.Elevation.e16, Material.Options.css "min-width" "200px" ] [ FormComponents.optionsForm model ]
+            ]
+        , Material.Grid.grid
+            []
+            [ FormComponents.cell 200 [ size All 4, size Tablet 4, Material.Elevation.e16 ] [ FormComponents.leftKeyLegend model ]
+            , FormComponents.cell 200 [ size All 4, size Tablet 4, Material.Elevation.e16 ] [ FormComponents.rightKeyLegend model ]
+            ]
         ]
 
 
@@ -82,7 +89,10 @@ renderCircle sphere =
 renderScores : World -> List (Svg.Svg msg)
 renderScores world =
     List.map (\e -> renderScore world e) world.players
-        |> (\s -> List.append s (List.map (\e -> renderGameScore world e) world.players))
+
+
+
+-- |> (\s -> List.append s (List.map (\e -> renderGameScore world e) world.players)) Show Games won some other way
 
 
 renderScore : World -> Player -> Svg.Svg msg
@@ -106,6 +116,7 @@ renderGameScore world player =
         , width (((/) (scoreWidth world) 2) |> toString)
         , height (scoreGameHeight world.gameSettings world.innerContainer player.gamesWon |> toString)
         , fill "blue"
+
         -- , fill (playerColor player.side)
         , fillOpacity "0.4"
         ]
@@ -166,7 +177,7 @@ renderSideLine sideline =
         []
 
 
-renderPlayers : List (Player) -> World -> List (Svg.Svg msg)
+renderPlayers : List Player -> World -> List (Svg.Svg msg)
 renderPlayers players world =
     List.map (\e -> renderPlayer e (getSideLine e.side world) world) players
 
@@ -204,20 +215,40 @@ renderStateMessage world svgs =
             List.append [ renderMessage (world.outerContainer.x2 / 2) (world.outerContainer.y2 / 2) "Paused" world ] svgs
 
         Win ->
-            List.append [ renderMessage (world.outerContainer.x2 / 2) (world.outerContainer.y2 / 2) "Won" world ] svgs
+            List.append [ renderMessage (world.outerContainer.x2 / 2) (world.outerContainer.y2 / 2) (winMessage world) world ] svgs
 
         Play ->
             svgs
 
 
+winMessage : World -> String
+winMessage world =
+    case world.winState of
+        NoWin ->
+            ""
+
+        LeftGameWin ->
+            "Game - Left Player"
+
+        RightGameWin ->
+            "Game - Left Player"
+
+        LeftOverallWin ->
+            "Left Player Wins!!!!"
+
+        RightOverallWin ->
+            "Right Player Wins!!!!"
+
+
 renderMessage : Float -> Float -> String -> World -> Svg.Svg msg
 renderMessage xpos ypos message world =
-    Svg.text'
+    Svg.text_
         [ x ((toString xpos) ++ "px")
         , y ((toString ypos) ++ "px")
         , fill "grey"
         , Svg.Attributes.opacity "0.6"
-          -- , Svg.Attributes.fontSize "20" -- improve font
+
+        -- , Svg.Attributes.fontSize "20" -- improve font
         ]
         [ Svg.text message ]
 
@@ -290,5 +321,6 @@ style h =
     , css "height" (toString h ++ "px")
     , css "padding-left" "0px"
     , css "padding-top" "0px"
-      --, css "color" "white"
+
+    --, css "color" "white"
     ]

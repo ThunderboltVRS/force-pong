@@ -11,6 +11,7 @@ import Html exposing (..)
 import Types exposing (..)
 import Material.Elevation as Elevation
 import Material.Slider as Slider
+import Material.List as Lists
 import JsonUtil exposing (..)
 
 
@@ -25,6 +26,7 @@ view settings material =
             , Material.Textfield.floatingLabel
             , Material.Textfield.value settings.text
             ]
+            []
         ]
 
 
@@ -50,30 +52,92 @@ optionsForm model =
           --     [ cell [ size All 8, size Tablet 4 ] [ saveButton model ]
           --     , cell [ size All 8, size Tablet 4 ] [ loadButton model ]
           --     ]
-        -- , Material.Grid.grid
-        --     []
-        --     [ cell 50 [ size All 8, size Tablet 4 ] [ playerOneName model ]
-        --     ]
-        -- , Material.Grid.grid
-        --     []
-        --     [ cell 50 [ size All 8, size Tablet 4 ] [ playerTwoName model ]
-        --     ]
-        Material.Grid.grid
+          -- , Material.Grid.grid
+          --     []
+          --     [ cell 50 [ size All 8, size Tablet 4 ] [ playerOneName model ]
+          --     ]
+          -- , Material.Grid.grid
+          --     []
+          --     [ cell 50 [ size All 8, size Tablet 4 ] [ playerTwoName model ]
+          --     ]
+          Material.Grid.grid
+            []
+            [ cell 10 [ size All 2, size Tablet 2 ] [ text "Force Strength" ]
+            , cell 50 [ size All 2, size Tablet 2, Material.Options.css "width" "200px" ] [ gravityStrength model ]
+            ]
+        , Material.Grid.grid
             []
             [ cell 50 [ size All 8, size Tablet 4 ] [ gravitySwitch model ]
             ]
         , Material.Grid.grid
             []
-            [ cell 50 [ size All 8, size Tablet 4 ] [ gravityStrength model ]
+            [ cell 50
+                [ size All 8, size Tablet 4 ]
+                [ case model.state of
+                    Win ->
+                        case model.winState of 
+                            NoWin ->
+                                pauseButton model
+
+                            LeftGameWin ->
+                                nextGameButton model
+
+                            RightGameWin ->
+                                nextGameButton model
+
+                            LeftOverallWin ->
+                                playAgainButton model
+
+                            RightOverallWin ->
+                                playAgainButton model
+
+                    Pause ->
+                        pauseButton model
+
+                    Play ->
+                        pauseButton model
+                ]
             ]
-        , Material.Grid.grid
-            []
-            [ cell 50 [ size All 8, size Tablet 4 ] [ pauseButton model ]
-            ]
-        -- , Material.Grid.grid
-        --     []
-        --     [ cell 50 [ size All 8, size Tablet 4 ] [ testDisplay model ]
-        --     ]
+        ]
+
+
+leftKeyLegend : World -> Html Types.Msg
+leftKeyLegend model =
+    -- Lists.ul []
+    --     [ Lists.li []
+    --         [ Lists.content []
+    --             [ keyIcon "W" "Move Up"
+    --             ]
+    --         ]
+    --     , Lists.li []
+    --         [ Lists.content []
+    --             [ Lists.icon "send" []
+    --             , text "Sent mail"
+    --             ]
+    --         ]
+    --     , Lists.li []
+    --         [ Lists.content []
+    --             [ Lists.icon "delete" []
+    --             , text "Trash"
+    --             ]
+    --         ]
+    --     ]
+    div
+        []
+        [ legendTitle Left
+        , keyIcon "W" "Move Up"
+        , keyIcon "S" "Move Down"
+        , keyIcon "D" "Shoot"
+        ]
+
+
+rightKeyLegend : World -> Html Types.Msg
+rightKeyLegend model =
+    div []
+        [ legendTitle Right
+        , keyIcon "Up" "Move Up"
+        , keyIcon "Down" "Move Down"
+        , keyIcon "Left" "Shoot"
         ]
 
 
@@ -84,10 +148,11 @@ playerOneName model =
         model.mdl
         [ Material.Textfield.label "Player One Name"
         , Material.Textfield.floatingLabel
-        , Material.Textfield.text'
-        , Material.Textfield.onInput PlayerOneName
+        , Material.Textfield.text_
+        , Material.Options.onInput PlayerOneName
         , Material.Textfield.value (playerName Left model.players)
         ]
+        []
 
 
 playerTwoName : World -> Html Types.Msg
@@ -97,10 +162,11 @@ playerTwoName model =
         model.mdl
         [ Material.Textfield.label "Player Two Name"
         , Material.Textfield.floatingLabel
-        , Material.Textfield.text'
-        , Material.Textfield.onInput PlayerTwoName
+        , Material.Textfield.text_
+        , Material.Options.onInput PlayerTwoName
         , Material.Textfield.value (playerName Right model.players)
         ]
+        []
 
 
 pauseButton : World -> Html Types.Msg
@@ -113,9 +179,39 @@ pauseButton model =
         , Material.Button.raised
         , Material.Button.ripple
         , Material.Button.colored
-        , Material.Button.onClick TogglePause
+        , Material.Options.onClick TogglePause
         ]
         [ Html.text (pauseButtonText model) ]
+
+
+nextGameButton : World -> Html Types.Msg
+nextGameButton model =
+    Material.Button.render Mdl
+        [ 0 ]
+        model.mdl
+        [ css "margin" "0px 0px"
+        , css "float" "left"
+        , Material.Button.raised
+        , Material.Button.ripple
+        , Material.Button.colored
+        , Material.Options.onClick NextGame
+        ]
+        [ Html.text "Next Game" ]
+
+
+playAgainButton : World -> Html Types.Msg
+playAgainButton model =
+    Material.Button.render Mdl
+        [ 0 ]
+        model.mdl
+        [ css "margin" "0px 0px"
+        , css "float" "left"
+        , Material.Button.raised
+        , Material.Button.ripple
+        , Material.Button.colored
+        , Material.Options.onClick RestartSet
+        ]
+        [ Html.text "Restart" ]
 
 
 pauseButtonText : World -> String
@@ -136,7 +232,7 @@ gravitySwitch model =
     Material.Toggles.switch Mdl
         [ 0 ]
         model.mdl
-        [ Material.Toggles.onClick (FlipGravity True)
+        [ Material.Options.onClick (FlipGravity True)
         , Material.Toggles.ripple
         , Material.Toggles.value (model.physicsSettings.gravityAttractionType == Attract)
         ]
@@ -189,7 +285,7 @@ cell height styling =
 -- Helpers
 
 
-playerName : Side -> List (Player) -> String
+playerName : Side -> List Player -> String
 playerName side players =
     let
         player =
@@ -203,6 +299,38 @@ playerName side players =
                 p.name
 
 
-findPlayer : Side -> List (Player) -> Maybe Player
+findPlayer : Side -> List Player -> Maybe Player
 findPlayer side players =
     List.head (List.filter (\e -> e.side == side) players)
+
+
+legendTitle : Side -> Html Types.Msg
+legendTitle side =
+    Material.Grid.grid
+        []
+        [ cell 8
+            [ size All 10, size Tablet 10 ]
+            [ Material.Options.styled p
+                [ Typo.title ]
+                [ text ((toString side) ++ " Player") ]
+            ]
+        ]
+
+
+keyIcon : String -> String -> Html Types.Msg
+keyIcon letter description =
+    Material.Grid.grid
+        []
+        [ cell 2
+            [ size All 4, size Tablet 4 ]
+            [ Material.Options.styled p
+                [ Typo.body1 ]
+                [ text letter ]
+            ]
+        , cell 2
+            [ size All 4, size Tablet 4 ]
+            [ Material.Options.styled p
+                [ Typo.body1 ]
+                [ text description ]
+            ]
+        ]

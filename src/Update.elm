@@ -1,7 +1,7 @@
 module Update exposing (..)
 
 import Types exposing (..)
-import Keyboard exposing (..)
+import Keyboard.Extra exposing (Key(..))
 import Material
 
 
@@ -16,7 +16,7 @@ update msg world =
                 Play ->
                     ( applyScoring (applyPhysics dt world), Cmd.none )
 
-                Pause ->
+                Types.Pause ->
                     ( world, Cmd.none )
 
                 Win ->
@@ -25,22 +25,31 @@ update msg world =
         WindowSize reSize ->
             ( world, Cmd.none )
 
-        KeyDown key ->
-            ( applyPlayerKeyChange key Pressed world, Cmd.none )
-
-        KeyUp key ->
-            ( applyPlayerKeyChange key NotPressed world, Cmd.none )
+        KeyboardMsg keyMsg ->
+            let
+                ( pressedKeys, maybeKeyChange ) =
+                    Keyboard.Extra.updateWithKeyChange keyMsg world.pressedKeys
+            in
+                --( { world | pressedKeys = pressedKeys}, Cmd.none )
+                ( (applyKeyChanges ({ world | pressedKeys = pressedKeys })), Cmd.none )
 
         TogglePause ->
             case world.state of
                 Play ->
-                    ( { world | state = Pause }, Cmd.none )
+                    ( { world | state = Types.Pause }, Cmd.none )
 
-                Pause ->
+                Types.Pause ->
                     ( { world | state = Play }, Cmd.none )
 
                 Win ->
-                    ( { world | state = Play }, Cmd.none )
+                    ( world, Cmd.none )
+
+        -- Do nothing
+        NextGame ->
+            ( nextGame world, Cmd.none )
+
+        RestartSet ->
+            ( restartSet world, Cmd.none )
 
         PlayerOneName name ->
             ( updatePlayerName name Left world, Cmd.none )
@@ -65,53 +74,73 @@ update msg world =
         LoadState ->
             ( world, Cmd.none )
 
-        Types.Mdl msg' ->
-            Material.update msg' world
+        Types.Mdl msg ->
+            Material.update Mdl msg world
 
 
-applyPlayerKeyChange : KeyCode -> KeyboardKeyAction -> World -> World
-applyPlayerKeyChange keyCode action world =
-    case keyCode of
-        38 ->
-            -- Up
-            updatePlayerActions world Right action Up
-
-        40 ->
-            -- Down
-            updatePlayerActions world Right action Down
-
-        87 ->
-            -- Up
-            updatePlayerActions world Left action Up
-
-        83 ->
-            -- Down
-            updatePlayerActions world Left action Down
-
-        68 ->
-            -- Left Shoot
-            case action of
-                Pressed ->
-                    attemptShot world Left
-
-                NotPressed ->
-                    world
-
-        37 ->
-            -- Right shoot
-            case action of
-                Pressed ->
-                    attemptShot world Right
-
-                NotPressed ->
-                    world
-
-        _ ->
-            world
+applyKeyChanges : World -> World
+applyKeyChanges world =
+    updatePlayerActions Right (keyboardAction (List.any (\k -> k == ArrowUp) world.pressedKeys)) Up world
+        |> updatePlayerActions Right (keyboardAction (List.any (\k -> k == ArrowDown) world.pressedKeys)) Down
+        |> updatePlayerActions Left (keyboardAction (List.any (\k -> k == CharW) world.pressedKeys)) Up
+        |> updatePlayerActions Left (keyboardAction (List.any (\k -> k == CharS) world.pressedKeys)) Down
+        |> applyShotActions
 
 
-updatePlayerActions : World -> Side -> KeyboardKeyAction -> PlayerDirection -> World
-updatePlayerActions world side keyboardAction direction =
+keyboardAction : Bool -> KeyboardKeyAction
+keyboardAction bool =
+    if (bool) then
+        Pressed
+    else
+        NotPressed
+
+
+applyShotActions : World -> World
+applyShotActions world =
+    applyLeftShotAction world
+        |> applyRightShotAction
+
+
+applyLeftShotAction : World -> World
+applyLeftShotAction world =
+    if (List.any (\k -> k == ArrowLeft) world.pressedKeys) then
+        attemptShot world Right
+    else
+        world
+
+
+applyRightShotAction : World -> World
+applyRightShotAction world =
+    if (List.any (\k -> k == CharD) world.pressedKeys) then
+        attemptShot world Left
+    else
+        world
+
+
+
+-- applyPlayerKeyChange : World -> Key -> World
+-- applyPlayerKeyChange world key =
+--     case key of
+--         ArrowLeft ->
+--             -- Left Shoot
+--             case action of
+--                 Pressed ->
+--                     attemptShot world Left
+--                 NotPressed ->
+--                     world
+--         37 ->
+--             -- Right shoot
+--             case action of
+--                 Pressed ->
+--                     attemptShot world Right
+--                 NotPressed ->
+--                     world
+--         _ ->
+--             world
+
+
+updatePlayerActions : Side -> KeyboardKeyAction -> PlayerDirection -> World -> World
+updatePlayerActions side keyboardAction direction world =
     { world
         | players =
             List.map
@@ -235,6 +264,8 @@ createSphere player initialMass velocity =
         , scale = scale
         , merged = False
         , hitType = None
+        , explosive = False
+        , exploding = False
         }
 
 
@@ -244,7 +275,7 @@ applyScoring world =
         |> updatePlayerScores
         |> removeScoredSpheres
         |> updateWinningPlayers
-        |> updateForWin
+        |> updateWinState
 
 
 applyPhysics : Float -> World -> World
@@ -283,7 +314,7 @@ updateWinningPlayers world =
     { world | players = List.map (\e -> updateWinningPlayer e) world.players }
 
 
-updatePlayerScore : GameSettings -> Player -> List (Sphere) -> Player
+updatePlayerScore : GameSettings -> Player -> List Sphere -> Player
 updatePlayerScore settings player spheres =
     { player | score = clamp 0 100 (player.score + playerScoreAsPercentage settings player spheres) }
 
@@ -296,19 +327,38 @@ updateWinningPlayer player =
         player
 
 
-
--- if any player won then set world State to Win
-
-
-updateForWin : World -> World
-updateForWin world =
+updateWinState : World -> World
+updateWinState world =
+    -- if any player won then set world State to Win
     if (anyWinningPlayers world.players) then
-        { world | state = Win }
+        { world
+            | state = Win
+            , winState =
+                case (findWinningPlayer world.players) of
+                    Just p ->
+                        if (p.gamesWon >= world.gameSettings.gamesToWin) then
+                            case p.side of
+                                Left ->
+                                    LeftOverallWin
+
+                                Right ->
+                                    RightOverallWin
+                        else
+                            case p.side of
+                                Left ->
+                                    LeftGameWin
+
+                                Right ->
+                                    RightGameWin
+
+                    Nothing ->
+                        NoWin
+        }
     else
         world
 
 
-playerScoreAsPercentage : GameSettings -> Player -> List (Sphere) -> Float
+playerScoreAsPercentage : GameSettings -> Player -> List Sphere -> Float
 playerScoreAsPercentage settings player spheres =
     List.filter (\e -> scored player.side e) spheres
         |> List.map (\e -> e.mass.size)
@@ -331,22 +381,22 @@ scored side sphere =
             sphere.hitType == RightPlayer
 
 
-incrementLifetime : List (Sphere) -> List (Sphere)
+incrementLifetime : List Sphere -> List Sphere
 incrementLifetime spheres =
     List.map (\e -> { e | aliveFrames = e.aliveFrames + 1 }) spheres
 
 
-incrementWeaponLastFired : Float -> List (Player) -> List (Player)
+incrementWeaponLastFired : Float -> List Player -> List Player
 incrementWeaponLastFired dt players =
     List.map (\e -> { e | weaponLastFired = e.weaponLastFired + dt }) players
 
 
-applyForces : PhysicsSettings -> Float -> List (Sphere) -> List (Sphere)
+applyForces : PhysicsSettings -> Float -> List Sphere -> List Sphere
 applyForces settings dt spheres =
     List.map (\e -> applyGravitationForAll settings dt e spheres) spheres
 
 
-applyPlayerForces : Float -> List (Player) -> List (Player)
+applyPlayerForces : Float -> List Player -> List Player
 applyPlayerForces dt players =
     List.map (\e -> applyPlayerMovementForce dt e) players
 
@@ -382,12 +432,12 @@ applyPlayerMovementForce dt player =
         { player | velocity = { x = 0, y = clamp (negate maxVelocity) maxVelocity (upVelocity + downVelocity) } }
 
 
-updateSpherePositions : List (Sphere) -> List (Sphere)
+updateSpherePositions : List Sphere -> List Sphere
 updateSpherePositions spheres =
     List.map (\e -> updateSpherePosistion e) spheres
 
 
-applyPaddleCollisions : World -> List (Sphere) -> List (Sphere)
+applyPaddleCollisions : World -> List Sphere -> List Sphere
 applyPaddleCollisions world spheres =
     List.map (\e -> applyPaddleCollision e world) spheres
 
@@ -413,7 +463,7 @@ removeScoredSpheres world =
     { world | spheres = List.filter (\e -> e.hitType == None) world.spheres }
 
 
-markScoredSpheres : List (Sphere) -> World -> List (Sphere)
+markScoredSpheres : List Sphere -> World -> List Sphere
 markScoredSpheres spheres world =
     List.map (\e -> markScoredSphere e world) spheres
 
@@ -448,14 +498,19 @@ sphereDefaultPosition sphere side world =
             { x = world.rightSideLine.x1 - sphereRadius sphere, y = sphere.position.y }
 
 
-findPlayer : Side -> List (Player) -> Maybe Player
+findPlayer : Side -> List Player -> Maybe Player
 findPlayer side players =
     List.head (List.filter (\e -> e.side == side) players)
 
 
-anyWinningPlayers : List (Player) -> Bool
+anyWinningPlayers : List Player -> Bool
 anyWinningPlayers players =
     List.any (\e -> winningPlayer e) players
+
+
+findWinningPlayer : List Player -> Maybe Player
+findWinningPlayer players =
+    List.filter (\e -> winningPlayer e) players |> List.head
 
 
 winningPlayer : Player -> Bool
@@ -484,7 +539,7 @@ collidedWithPaddle world sphere player =
                             && ((sphere.position.y) < p.position.y + p.size && (sphere.position.y) > p.position.y)
 
 
-applyBoundaryCollisions : World -> List (Sphere) -> List (Sphere)
+applyBoundaryCollisions : World -> List Sphere -> List Sphere
 applyBoundaryCollisions world spheres =
     List.map (\e -> applyHorizontalBoundaryCollisions e world) spheres
 
@@ -509,7 +564,7 @@ makeNegative x =
     makePositive x |> negate
 
 
-updatePlayerPositions : World -> List (Player) -> List (Player)
+updatePlayerPositions : World -> List Player -> List Player
 updatePlayerPositions world players =
     List.map (\e -> limitPlayerBoundary world e) players
         |> List.map (\e -> updatePlayerPosistion e)
@@ -541,26 +596,10 @@ playerOutOfBounds world player =
         > world.innerContainer.y2
 
 
-applySphereCollisions : World -> List (Sphere) -> List (Sphere)
+applySphereCollisions : World -> List Sphere -> List Sphere
 applySphereCollisions world spheres =
     List.map (\e -> mergeSpheres world e (List.filter (\e1 -> e1 /= e) spheres)) spheres
         |> removeMergedSpheres
-
-
-mergeSphere : World -> Sphere -> Sphere -> Sphere
-mergeSphere world sphereA sphereB =
-    let
-        sphereAPost =
-            { sphereA
-                | mass = limitSphereMass world (sumMass sphereA.mass sphereB.mass)
-                , position = mergePosition sphereA.position sphereB.position
-                , side = largestMassSide sphereA.side sphereB.side sphereA.mass sphereB.mass
-            }
-
-        sphereBPost =
-            { sphereB | mass = { size = 0 }, position = { x = 0, y = 0 }, velocity = { x = 0, y = 0 } }
-    in
-        updateDiameter sphereA.scale (updateVelocity sphereA sphereB sphereAPost sphereBPost)
 
 
 largestMassSide : Side -> Side -> Mass -> Mass -> Side
@@ -615,13 +654,13 @@ calculateMomentum mass velocity =
 
 
 calculateNewVelocityInAxis : Float -> Float -> Float -> Float -> Float -> Float -> Float -> Float -> Float
-calculateNewVelocityInAxis massA massB velocityA velocityB massA' massB' velocityA' velocityB' =
-    -- conservation of momentum  (m1 * v1 = m1' * v1')
+calculateNewVelocityInAxis massA massB velocityA velocityB massA_ massB_ velocityA_ velocityB_ =
+    -- conservation of momentum  (m1 * v1 = m1_ * v1_)
     let
         momentumBefore =
             (massA * velocityA) + (massB * velocityB)
     in
-        momentumBefore / massA'
+        momentumBefore / massA_
 
 
 calculateNewPosistion : Velocity -> Position -> Position
@@ -631,12 +670,12 @@ calculateNewPosistion velocity position =
     }
 
 
-filterSpheres : Sphere -> List (Sphere) -> List (Sphere)
+filterSpheres : Sphere -> List Sphere -> List Sphere
 filterSpheres sphere spheres =
     List.filter (\e1 -> e1 /= sphere) spheres
 
 
-applyGravitationForAll : PhysicsSettings -> Float -> Sphere -> List (Sphere) -> Sphere
+applyGravitationForAll : PhysicsSettings -> Float -> Sphere -> List Sphere -> Sphere
 applyGravitationForAll settings dt sphereA spheres =
     applyForcesToObject settings sphereA (List.map (\s -> calculateGravitation settings dt sphereA s) (List.filter (\s -> s /= sphereA) spheres))
 
@@ -680,15 +719,15 @@ calculateGravitationScalar gravConst mass1 mass2 distance =
 
 euclideanDistance : Position -> Position -> Float
 euclideanDistance positionA positionB =
-    Basics.sqrt ((square (positionB.x - positionA.x)) + (square (positionB.y - positionA.y)))
+    Basics.sqrt (abs ((square (positionB.x - positionA.x)) + (square (positionB.y - positionA.y))))
 
 
-applyForcesToObject : PhysicsSettings -> Sphere -> List (Force) -> Sphere
+applyForcesToObject : PhysicsSettings -> Sphere -> List Force -> Sphere
 applyForcesToObject settings sphere forces =
     { sphere | velocity = updateVelocityForForces settings sphere.velocity sphere.mass.size forces }
 
 
-updateVelocityForForces : PhysicsSettings -> Velocity -> Float -> List (Force) -> Velocity
+updateVelocityForForces : PhysicsSettings -> Velocity -> Float -> List Force -> Velocity
 updateVelocityForForces settings velocity mass forces =
     -- F= ma
     { velocity
@@ -702,12 +741,12 @@ limitSphereVelocity settings velocity =
     clamp (negate settings.maxSphereVelocity) settings.maxSphereVelocity velocity
 
 
-sumX : List (Force) -> Float
+sumX : List Force -> Float
 sumX forces =
     List.sum (List.map (\f -> f.x) forces)
 
 
-sumY : List (Force) -> Float
+sumY : List Force -> Float
 sumY forces =
     List.sum (List.map (\f -> f.y) forces)
 
@@ -755,29 +794,53 @@ markAsMerged sphere =
     { sphere | merged = True }
 
 
-mergeSpheres : World -> Sphere -> List (Sphere) -> Sphere
+mergeSpheres : World -> Sphere -> List Sphere -> Sphere
 mergeSpheres world sphere otherSpheres =
     let
-        spheresCollided =
+        mergableSpheres =
             collidedSpheres sphere otherSpheres
     in
-        if List.isEmpty spheresCollided then
-            sphere
-        else if
-            (List.any (\f -> f.mass.size > sphere.mass.size) spheresCollided)
-                || (List.any (\f -> f.mass.size == sphere.mass.size && f.aliveFrames > sphere.aliveFrames) spheresCollided)
-        then
-            markAsMerged sphere
-        else
-            List.foldl (mergeSphere world) sphere spheresCollided
+        case mergableSpheres of
+            [] ->
+                sphere
+
+            spheresToMerge ->
+                if (alreadyMerged spheresToMerge sphere) then
+                    markAsMerged sphere
+                else
+                    List.foldl (mergeSphere world) sphere spheresToMerge
 
 
-collidedSpheres : Sphere -> List (Sphere) -> List (Sphere)
+mergeSphere : World -> Sphere -> Sphere -> Sphere
+mergeSphere world sphereA sphereB =
+    let
+        sphereAPost =
+            { sphereA
+                | mass = limitSphereMass world (sumMass sphereA.mass sphereB.mass)
+                , position = mergePosition sphereA.position sphereB.position
+                , side = largestMassSide sphereA.side sphereB.side sphereA.mass sphereB.mass
+                , explosive = world.physicsSettings.maxSphereSize <= sphereA.mass.size
+                , exploding = world.physicsSettings.maxSphereSize <= sphereA.mass.size -- Immediate
+            }
+
+        sphereBPost =
+            { sphereB | mass = { size = 0 }, position = { x = 0, y = 0 }, velocity = { x = 0, y = 0 } }
+    in
+        updateDiameter sphereA.scale (updateVelocity sphereA sphereB sphereAPost sphereBPost)
+
+
+alreadyMerged : List Sphere -> Sphere -> Bool
+alreadyMerged spheresToMerge sphere =
+    (List.any (\f -> f.mass.size > sphere.mass.size) spheresToMerge)
+        || (List.any (\f -> f.mass.size == sphere.mass.size && f.aliveFrames > sphere.aliveFrames) spheresToMerge)
+
+
+collidedSpheres : Sphere -> List Sphere -> List Sphere
 collidedSpheres sphere otherSpheres =
     List.filter (\e -> euclideanDistance sphere.position e.position < (sphere.diameter + e.diameter)) otherSpheres
 
 
-removeMergedSpheres : List (Sphere) -> List (Sphere)
+removeMergedSpheres : List Sphere -> List Sphere
 removeMergedSpheres spheres =
     List.filter (\e -> e.merged == False) spheres
 
@@ -811,3 +874,13 @@ flipSign flip number =
 updateGravityStrength : PhysicsSettings -> Float -> PhysicsSettings
 updateGravityStrength physicsSettings number =
     { physicsSettings | gravitationalConstant = (clamp 0 60 number) }
+
+
+nextGame : World -> World
+nextGame world =
+    { world | state = Play, winState = NoWin, players = List.map (\p -> { p | score = 0 }) world.players }
+
+
+restartSet : World -> World
+restartSet world =
+    { world | state = Play, winState = NoWin, players = List.map (\p -> { p | score = 0 }) world.players }

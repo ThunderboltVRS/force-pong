@@ -4,7 +4,6 @@ import Types exposing (..)
 import States exposing (initialWorld)
 import Json.Encode as JsonEncoder
 import Json.Decode as JsonDecoder
-import Json.Decode exposing ((:=))
 import Json.Decode.Extra exposing ((|:))
 
 
@@ -43,13 +42,13 @@ attactionTypeEncoder attactionType =
 physicsDecoder : JsonDecoder.Decoder PhysicsSettings
 physicsDecoder =
     JsonDecoder.succeed PhysicsSettings
-        |: ("gravitationalConstant" := JsonDecoder.float)
-        |: ("boundaryDampner" := JsonDecoder.float)
-        |: ("maxSphereVelocity" := JsonDecoder.float)
-        |: ("maxSphereSize" := JsonDecoder.float)
-        |: (("gravityAttractionType" := JsonDecoder.string) `JsonDecoder.andThen` decodeAttractionType)
-        |: ("maxGravitationalConstant" := JsonDecoder.float)
-        |: ("minGravitationalConstant" := JsonDecoder.float)
+        |: (JsonDecoder.field "gravitationalConstant" JsonDecoder.float)
+        |: (JsonDecoder.field "boundaryDampner" JsonDecoder.float)
+        |: (JsonDecoder.field "maxSphereVelocity" JsonDecoder.float)
+        |: (JsonDecoder.field "maxSphereSize" JsonDecoder.float)
+        |: ((JsonDecoder.field "gravityAttractionType" JsonDecoder.string) |> JsonDecoder.andThen decodeAttractionType)
+        |: (JsonDecoder.field "maxGravitationalConstant" JsonDecoder.float)
+        |: (JsonDecoder.field "minGravitationalConstant" JsonDecoder.float)
 
 
 decodeAttractionType : String -> JsonDecoder.Decoder AttactionType

@@ -3,21 +3,23 @@ module Types exposing (..)
 import Time exposing (Time, second, millisecond)
 import Window exposing (..)
 import Material
+import Keyboard.Extra exposing (Key(..))
 
 
 type Msg
     = Tick Time
     | WindowSize Window.Size
-    | KeyDown Int
-    | KeyUp Int
     | Mdl (Material.Msg Msg)
     | TogglePause
+    | RestartSet
+    | NextGame
     | PlayerOneName String
     | PlayerTwoName String
     | FlipGravity Bool
     | Slider Int Float
     | SaveState
     | LoadState
+    | KeyboardMsg Keyboard.Extra.Msg
 
 
 type AttactionType
@@ -37,8 +39,10 @@ type Side
 
 type WinState
     = NoWin
-    | LeftWin
-    | RightWin
+    | LeftGameWin
+    | RightGameWin
+    | LeftOverallWin
+    | RightOverallWin
 
 
 type HitType
@@ -127,22 +131,25 @@ type alias Sphere =
     , merged : Bool
     , hitType : HitType
     , side : Side
+    , explosive : Bool
+    , exploding : Bool
     }
 
 
 type alias World =
-    { spheres : List (Sphere)
-    , players : List (Player)
+    { spheres : List Sphere
+    , players : List Player
     , state : State
     , graphicSettings : GraphicSettings
     , leftSideLine : SideLine
     , rightSideLine : SideLine
     , physicsSettings : PhysicsSettings
     , gameSettings : GameSettings
-    , winStates : WinStates
+    , winState : WinState
     , innerContainer : Boundary
     , outerContainer : Boundary
     , mdl : Material.Model
+    , pressedKeys : List Key
     }
 
 
@@ -158,16 +165,10 @@ type alias Player =
     , mass : Mass
     , selectedWeapon : WeaponType
     , ammo : Float
-    , weapons : List (Weapon)
+    , weapons : List Weapon
     , weaponLastFired : Float
     , gamesWon : Int
     , name : String
-    }
-
-
-type alias WinStates =
-    { gameWinState : WinState
-    , setWinState : WinState
     }
 
 
